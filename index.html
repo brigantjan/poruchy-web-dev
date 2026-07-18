@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="app-version" content="1.0.0">
+<title>Poruchy</title>
+<style>
+  :root{
+    --zelena:#2e7d32; --zelena-bg:#e8f5e9;
+    --oranzova:#ef6c00; --oranzova-bg:#fff3e0;
+    --cervena:#c62828; --cervena-bg:#ffebee;
+    --siva:#757575; --siva-bg:#f0f0f0;
+    --sidebar-bg:#1f2933; --sidebar-fg:#e4e7eb;
+    --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
+    --accent:#2563eb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:#f7f8fa;}
+  button{cursor:pointer;font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;}
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{background:#eef1f4;position:sticky;top:0;cursor:pointer;user-select:none;}
+  tr:hover{background:#f0f4ff;cursor:pointer;}
+
+  /* ---------- Login ---------- */
+  #login-screen{display:flex;align-items:center;justify-content:center;height:100vh;}
+  #login-box{background:#fff;padding:32px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);width:320px;}
+  #login-box h1{margin-top:0;font-size:20px;}
+  #login-box input{width:100%;margin-bottom:12px;}
+  #login-box button{width:100%;background:var(--accent);color:#fff;border:none;padding:10px;border-radius:4px;font-size:14px;}
+  #login-error{color:var(--cervena);font-size:13px;margin-bottom:8px;min-height:16px;}
+
+  /* ---------- App shell ---------- */
+  #app{display:flex;height:100vh;}
+  #sidebar{width:230px;background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;flex-shrink:0;}
+  #sidebar h2{padding:16px;margin:0;font-size:16px;border-bottom:1px solid #37414c;}
+  #sidebar .stats{padding:12px 16px;font-size:13px;border-bottom:1px solid #37414c;}
+  #sidebar .stats div{display:flex;justify-content:space-between;margin-bottom:6px;}
+  #sidebar nav{flex:1;padding:8px 0;}
+  #sidebar nav button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--sidebar-fg);padding:10px 16px;font-size:14px;}
+  #sidebar nav button:hover,#sidebar nav button.active{background:#37414c;}
+  #sidebar .userbox{padding:12px 16px;border-top:1px solid #37414c;font-size:12px;color:#9aa5b1;}
+  #sidebar .userbox button{margin-top:6px;background:none;border:1px solid #556070;color:var(--sidebar-fg);padding:4px 8px;border-radius:4px;font-size:12px;}
+
+  #content{flex:1;overflow:auto;padding:20px;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .view-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .view-header h1{font-size:20px;margin:0;}
+  .btn-primary{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:4px;font-size:14px;}
+  .btn-secondary{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:4px;font-size:14px;}
+  .btn-danger{background:var(--cervena);color:#fff;border:none;padding:6px 10px;border-radius:4px;font-size:13px;}
+
+  /* ---------- Filters ---------- */
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;background:#fff;padding:10px;border-radius:6px;border:1px solid var(--border);}
+  .filters select,.filters input{font-size:13px;padding:5px 6px;}
+
+  /* ---------- Table wrapper ---------- */
+  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:70vh;}
+  tr.stav-zelena td:first-child{border-left:4px solid var(--zelena);}
+  tr.stav-oranzova td:first-child{border-left:4px solid var(--oranzova);}
+  tr.stav-cervena td:first-child{border-left:4px solid var(--cervena);}
+  tr.stav-siva td:first-child{border-left:4px solid var(--siva);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;}
+  .badge-zelena{background:var(--zelena-bg);color:var(--zelena);}
+  .badge-oranzova{background:var(--oranzova-bg);color:var(--oranzova);}
+  .badge-cervena{background:var(--cervena-bg);color:var(--cervena);}
+  .badge-siva{background:var(--siva-bg);color:var(--siva);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:50;}
+  .modal-box{background:#fff;border-radius:8px;width:720px;max-width:100%;padding:24px;}
+  .modal-box h2{margin-top:0;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
+  .form-grid label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px;}
+  .form-grid label.full{grid-column:1/-1;}
+  .checkbox-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);flex-direction:row!important;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;}
+  .section-title{font-weight:600;margin:18px 0 8px;border-top:1px solid var(--border);padding-top:14px;}
+  .priradenie-row{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px solid #f0f0f0;}
+  .priradenie-row span{flex:1;}
+  .vytazenost-hint{font-size:12px;color:var(--muted);background:#f7f8fa;border-radius:4px;padding:8px;margin-top:6px;}
+  .vytazenost-hint b.warn{color:var(--oranzova);}
+
+  .card-list{display:flex;flex-direction:column;gap:8px;}
+  .card-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .card-item.inactive{opacity:.5;}
+  .add-row{display:flex;gap:8px;margin-bottom:14px;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div id="login-box">
+    <h1>Poruchy — prihlásenie</h1>
+    <div id="login-error"></div>
+    <input id="login-username" placeholder="Prihlasovacie meno" autocomplete="username">
+    <input id="login-password" type="password" placeholder="Heslo" autocomplete="current-password">
+    <button id="login-btn">Prihlásiť sa</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <aside id="sidebar">
+    <h2>⚡ Poruchy</h2>
+    <div class="stats" id="sidebar-stats">
+      <div><span>Otvorené</span><b id="stat-otvorene">–</b></div>
+      <div><span>Blíži sa LT 🟠</span><b id="stat-blizi">–</b></div>
+      <div><span>Po LT 🔴</span><b id="stat-po-lt">–</b></div>
+      <div><span>Tržba (mesiac)</span><b id="stat-trzba">–</b></div>
+    </div>
+    <nav>
+      <button data-view="poruchy" class="active">📋 Zoznam porúch</button>
+      <button data-view="prehlad">💰 Prehľad</button>
+      <button data-view="technici">👷 Technici</button>
+      <button data-view="nastavenia">⚙️ Nastavenia</button>
+    </nav>
+    <div class="userbox">
+      Prihlásený: <b id="current-username">–</b> (<span id="current-role">–</span>)
+      <button id="logout-btn">Odhlásiť sa</button>
+    </div>
+  </aside>
+
+  <main id="content">
+
+    <!-- ===== Zoznam porúch ===== -->
+    <section id="view-poruchy" class="view active">
+      <div class="view-header">
+        <h1>Zoznam porúch</h1>
+        <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
+      </div>
+      <div class="filters">
+        <select id="f-stav"><option value="">Stav: všetky</option></select>
+        <select id="f-dopad"><option value="">Dopad: všetky</option></select>
+        <select id="f-typ"><option value="">Typ: všetky</option></select>
+        <select id="f-medium"><option value="">Médium: všetky</option></select>
+        <select id="f-technik"><option value="">Technik: všetci</option></select>
+        <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:260px;">
+        <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
+      </div>
+      <div class="table-wrap">
+        <table id="poruchy-table">
+          <thead>
+            <tr>
+              <th>Stav</th><th>LT</th><th>Externé ID</th><th>Dopad</th><th>Typ</th><th>Sieť</th><th>Médium</th>
+              <th>Popis</th><th>Adresa</th><th>Meno/Subjekt</th><th>Zadané</th><th>LT do</th><th>Realizácia</th>
+              <th>Plán</th><th>Realizuje</th><th>SPM č.</th><th>Cena práce</th><th>Cena mat.</th><th>Tržba</th>
+              <th>Zákazka</th><th>Faktúra</th><th>Poznámka</th>
+            </tr>
+          </thead>
+          <tbody id="poruchy-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Prehľad ===== -->
+    <section id="view-prehlad" class="view">
+      <div class="view-header"><h1>Prehľad — zárobky podľa zákaziek</h1></div>
+      <div class="filters">
+        <select id="p-mesiac"></select>
+        <select id="p-rok"></select>
+      </div>
+      <div class="card-item" style="margin-bottom:14px;">
+        <span>Súhrn za mesiac</span>
+        <b id="p-suhrn">–</b>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Číslo zákazky</th><th>Počet porúch</th><th>Tržba</th></tr></thead>
+          <tbody id="prehlad-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Technici ===== -->
+    <section id="view-technici" class="view">
+      <div class="view-header"><h1>Technici</h1></div>
+      <div class="add-row">
+        <input id="nt-meno" placeholder="Meno nového technika">
+        <button class="btn-primary" id="nt-add">Pridať</button>
+      </div>
+      <div class="card-list" id="technici-list"></div>
+    </section>
+
+    <!-- ===== Nastavenia ===== -->
+    <section id="view-nastavenia" class="view">
+      <div class="view-header"><h1>Nastavenia — číselníky</h1></div>
+      <div id="ciselniky-container"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== Modal: porucha detail/edit ===== -->
+<div class="modal-overlay hidden" id="modal-porucha">
+  <div class="modal-box">
+    <h2 id="modal-title">Porucha</h2>
+    <div class="form-grid" id="porucha-form"></div>
+
+    <div class="section-title">Priradenia technikov</div>
+    <div id="priradenia-list"></div>
+    <div class="add-row" id="priradenie-add-row" style="margin-top:8px;">
+      <select id="pr-technik"></select>
+      <input type="date" id="pr-od" title="Od">
+      <input type="date" id="pr-do" title="Do (voliteľné)">
+      <button class="btn-secondary" id="pr-add-btn">+ Priradiť</button>
+    </div>
+    <div class="vytazenost-hint hidden" id="vytazenost-hint"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="modal-cancel">Zavrieť</button>
+      <button class="btn-primary" id="modal-save">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+// ---------------------------------------------------------------------
+// API base URL auto-detekcia (bez hardcoded URL)
+// ---------------------------------------------------------------------
+const API_BASE = (() => {
+  const host = window.location.hostname;
+  const path = window.location.pathname;
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "https://poruchy-api-dev.onrender.com";
+  }
+  if (path.includes("poruchy-web-dev") || path.includes("-dev")) {
+    return "https://poruchy-api-dev.onrender.com";
+  }
+  return "https://poruchy-api.onrender.com";
+})();
+
+// ---------------------------------------------------------------------
+// Stav appky
+// ---------------------------------------------------------------------
+const state = {
+  token: null, role: null, username: null,
+  ciselniky: { dopady: [], typy: [], media: [] },
+  technici: [],
+  currentPoruchaId: null,
+};
+
+function saveAuth() {
+  localStorage.setItem("poruchy_auth", JSON.stringify({ token: state.token, role: state.role, username: state.username }));
+}
+function loadAuth() {
+  try {
+    const raw = localStorage.getItem("poruchy_auth");
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.token = data.token; state.role = data.role; state.username = data.username;
+    return !!state.token;
+  } catch (e) { return false; }
+}
+function clearAuth() {
+  localStorage.removeItem("poruchy_auth");
+  state.token = null; state.role = null; state.username = null;
+}
+
+// ---------------------------------------------------------------------
+// API helper
+// ---------------------------------------------------------------------
+async function api(path, opts = {}) {
+  const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+  if (state.token) headers["Authorization"] = "Bearer " + state.token;
+  const res = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+  if (res.status === 401) {
+    clearAuth();
+    showLogin();
+    throw new Error("Prihlásenie vypršalo, prihlás sa znova.");
+  }
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = j.detail || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ---------------------------------------------------------------------
+// Formátovacie helpery
+// ---------------------------------------------------------------------
+function fmtDate(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.toLocaleDateString("sk-SK");
+}
+function fmtMoney(v) {
+  if (v === null || v === undefined) return "";
+  return Number(v).toLocaleString("sk-SK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+function ltClass(lt) {
+  return { "zelená": "zelena", "oranžová": "oranzova", "červená": "cervena", "sivá": "siva" }[lt] || "";
+}
+
+// ---------------------------------------------------------------------
+// Login
+// ---------------------------------------------------------------------
+function showLogin() {
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app").classList.add("hidden");
+}
+function showApp() {
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("current-username").textContent = state.username;
+  document.getElementById("current-role").textContent = state.role;
+}
+
+document.getElementById("login-btn").addEventListener("click", doLogin);
+document.getElementById("login-password").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+async function doLogin() {
+  const username = document.getElementById("login-username").value.trim();
+  const password = document.getElementById("login-password").value;
+  const errBox = document.getElementById("login-error");
+  errBox.textContent = "";
+  if (!username || !password) { errBox.textContent = "Vyplň meno aj heslo."; return; }
+  try {
+    const res = await fetch(API_BASE + "/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || "Nesprávne meno alebo heslo.");
+    }
+    const data = await res.json();
+    state.token = data.token; state.role = data.role; state.username = data.username;
+    saveAuth();
+    await initApp();
+  } catch (e) {
+    errBox.textContent = e.message;
+  }
+}
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  clearAuth();
+  showLogin();
+});
+
+// ---------------------------------------------------------------------
+// Navigácia medzi sekciami
+// ---------------------------------------------------------------------
+document.querySelectorAll("#sidebar nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + btn.dataset.view).classList.add("active");
+    if (btn.dataset.view === "prehlad") loadPrehlad();
+    if (btn.dataset.view === "technici") loadTechniciView();
+    if (btn.dataset.view === "nastavenia") loadNastaveniaView();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Dashboard (sidebar)
+// ---------------------------------------------------------------------
+async function loadDashboard() {
+  try {
+    const d = await api("/dashboard");
+    document.getElementById("stat-otvorene").textContent = d.otvorene ?? 0;
+    document.getElementById("stat-blizi").textContent = d.blizi_sa_lt ?? 0;
+    document.getElementById("stat-po-lt").textContent = d.po_lt ?? 0;
+    document.getElementById("stat-trzba").textContent = fmtMoney(d.trzba_mesiac || 0);
+  } catch (e) { console.error(e); }
+}
+
+// ---------------------------------------------------------------------
+// Číselníky + technici (cache)
+// ---------------------------------------------------------------------
+async function loadCiselnikyATechnici() {
+  const [dopady, typy, media, technici] = await Promise.all([
+    api("/ciselniky/dopady"), api("/ciselniky/typy"), api("/ciselniky/media"), api("/technici"),
+  ]);
+  state.ciselniky.dopady = dopady;
+  state.ciselniky.typy = typy;
+  state.ciselniky.media = media;
+  state.technici = technici;
+
+  fillSelect("f-dopad", dopady, "id", "nazov", "Dopad: všetky");
+  fillSelect("f-typ", typy, "id", "nazov", "Typ: všetky");
+  fillSelect("f-medium", media, "id", "nazov", "Médium: všetky");
+  fillSelect("f-technik", technici, "id", "meno", "Technik: všetci");
+  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Stav: všetky");
+}
+
+function fillSelect(elId, items, valKey, labelKey, placeholder) {
+  const el = document.getElementById(elId);
+  const current = el.value;
+  el.innerHTML = "";
+  if (placeholder) {
+    const opt = document.createElement("option");
+    opt.value = ""; opt.textContent = placeholder;
+    el.appendChild(opt);
+  }
+  items.forEach(it => {
+    const opt = document.createElement("option");
+    opt.value = it[valKey]; opt.textContent = it[labelKey];
+    el.appendChild(opt);
+  });
+  el.value = current || "";
+}
+
+// ---------------------------------------------------------------------
+// Zoznam porúch
+// ---------------------------------------------------------------------
+["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => {
+  document.getElementById(id).addEventListener("change", loadPoruchy);
+});
+let hladatTimer = null;
+document.getElementById("f-hladat").addEventListener("input", () => {
+  clearTimeout(hladatTimer);
+  hladatTimer = setTimeout(loadPoruchy, 350);
+});
+document.getElementById("f-reset").addEventListener("click", () => {
+  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-hladat").value = "";
+  loadPoruchy();
+});
+
+async function loadPoruchy() {
+  const params = new URLSearchParams();
+  const stav = document.getElementById("f-stav").value;
+  const dopad = document.getElementById("f-dopad").value;
+  const typ = document.getElementById("f-typ").value;
+  const medium = document.getElementById("f-medium").value;
+  const technik = document.getElementById("f-technik").value;
+  const hladat = document.getElementById("f-hladat").value.trim();
+  if (stav) params.set("stav", stav);
+  if (dopad) params.set("dopad_id", dopad);
+  if (typ) params.set("typ_id", typ);
+  if (medium) params.set("medium_id", medium);
+  if (technik) params.set("technik_id", technik);
+  if (hladat) params.set("hladat", hladat);
+
+  const tbody = document.getElementById("poruchy-tbody");
+  tbody.innerHTML = "<tr><td colspan='22'>Načítavam…</td></tr>";
+  try {
+    const rows = await api("/poruchy?" + params.toString());
+    renderPoruchyTable(rows);
+  } catch (e) {
+    tbody.innerHTML = "<tr><td colspan='22'>Chyba: " + e.message + "</td></tr>";
+  }
+}
+
+function renderPoruchyTable(rows) {
+  const tbody = document.getElementById("poruchy-tbody");
+  if (!rows.length) { tbody.innerHTML = "<tr><td colspan='22'>Žiadne záznamy.</td></tr>"; return; }
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.className = "stav-" + ltClass(r.lt_stav);
+    tr.addEventListener("click", () => openPoruchaModal(r.id));
+    tr.innerHTML = `
+      <td>${r.stav}</td>
+      <td><span class="badge badge-${ltClass(r.lt_stav)}">${r.lt_stav}</span></td>
+      <td>${r.externe_id || ""}</td>
+      <td>${r.dopad_kod || ""}</td>
+      <td>${r.typ_kod || ""}</td>
+      <td>${r.siet ? "Áno" : "Nie"}</td>
+      <td>${r.medium_kod || ""}</td>
+      <td>${escapeHtml(r.popis || "")}</td>
+      <td>${escapeHtml(r.adresa || "")}</td>
+      <td>${escapeHtml(r.meno_subjekt || "")}</td>
+      <td>${fmtDate(r.datum_zadania)}</td>
+      <td>${fmtDate(r.lt_vybavit_do)}</td>
+      <td>${fmtDate(r.datum_realizacie)}</td>
+      <td>${fmtDate(r.planovany_datum)}</td>
+      <td>${escapeHtml(r.technici_aktivni || "")}</td>
+      <td>${r.spm_cislo || ""}</td>
+      <td>${r.cena_prace_neuctuje_sa ? "neúčtuje sa" : fmtMoney(r.cena_prace)}</td>
+      <td>${r.cena_materialu_neuctuje_sa ? "neúčtuje sa" : fmtMoney(r.cena_materialu)}</td>
+      <td>${fmtMoney(r.trzba_spolu)}</td>
+      <td>${r.cislo_zakazky || ""}</td>
+      <td>${r.faktura_stav || ""}</td>
+      <td>${escapeHtml(r.poznamka || "")}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ---------------------------------------------------------------------
+// Modal: vytvorenie / editácia poruchy
+// ---------------------------------------------------------------------
+const PORUCHA_FIELDS = [
+  { key: "stav", label: "Stav", type: "select", options: ["Otvorená","Zrealizovaná","Stornovaná","Zaparkovaná"] },
+  { key: "externe_id", label: "Externé ID (Telekom)", type: "text" },
+  { key: "dopad_id", label: "Dopad", type: "ciselnik", cis: "dopady" },
+  { key: "typ_id", label: "Typ", type: "ciselnik", cis: "typy" },
+  { key: "medium_id", label: "Médium", type: "ciselnik", cis: "media" },
+  { key: "siet", label: "Sieťová porucha", type: "checkbox" },
+  { key: "popis", label: "Popis", type: "text-list", full: true },
+  { key: "adresa", label: "Adresa", type: "text", full: true },
+  { key: "meno_subjekt", label: "Meno / Subjekt", type: "text" },
+  { key: "datum_zadania", label: "Dátum zadania", type: "datetime" },
+  { key: "lt_vybavit_do", label: "LT – vybaviť do", type: "datetime" },
+  { key: "planovany_datum", label: "Plánovaný dátum", type: "datetime" },
+  { key: "datum_realizacie", label: "Dátum realizácie", type: "datetime" },
+  { key: "spm_zadany", label: "SPM zadaný", type: "date" },
+  { key: "spm_schvaleny", label: "SPM schválený", type: "date" },
+  { key: "spm_neuctuje_sa", label: "SPM neúčtuje sa", type: "checkbox" },
+  { key: "spm_cislo", label: "SPM číslo", type: "text" },
+  { key: "cena_prace", label: "Cena práce (€)", type: "number" },
+  { key: "cena_prace_neuctuje_sa", label: "Cena práce – neúčtuje sa", type: "checkbox" },
+  { key: "cena_materialu", label: "Cena materiálu (€)", type: "number" },
+  { key: "cena_materialu_neuctuje_sa", label: "Cena materiálu – neúčtuje sa", type: "checkbox" },
+  { key: "cislo_zakazky", label: "Číslo zákazky", type: "text" },
+  { key: "faktura_stav", label: "Faktúra", type: "select", options: ["Pripravená","Odoslaná","Neúčtuje sa"], allowEmpty: true },
+  { key: "poznamka", label: "Poznámka", type: "text-list", full: true },
+];
+
+let popisHistory = [];
+
+function inputHtmlFor(f, value) {
+  const id = "pf-" + f.key;
+  if (f.type === "checkbox") {
+    return `<label class="checkbox-row"><input type="checkbox" id="${id}" ${value ? "checked" : ""}> ${f.label}</label>`;
+  }
+  if (f.type === "select") {
+    const opts = (f.allowEmpty ? ['<option value="">–</option>'] : []).concat(
+      f.options.map(o => `<option value="${o}" ${value === o ? "selected" : ""}>${o}</option>`)
+    ).join("");
+    return `<label>${f.label}<select id="${id}">${opts}</select></label>`;
+  }
+  if (f.type === "ciselnik") {
+    const items = state.ciselniky[f.cis] || [];
+    const opts = ['<option value="">–</option>'].concat(
+      items.map(it => `<option value="${it.id}" ${String(value) === String(it.id) ? "selected" : ""}>${it.nazov} (${it.kod})</option>`)
+    ).join("");
+    return `<label>${f.label}<select id="${id}">${opts}</select></label>`;
+  }
+  if (f.type === "datetime") {
+    const v = value ? toLocalDatetimeInput(value) : "";
+    return `<label>${f.label}<input type="datetime-local" id="${id}" value="${v}"></label>`;
+  }
+  if (f.type === "date") {
+    const v = value ? String(value).slice(0, 10) : "";
+    return `<label>${f.label}<input type="date" id="${id}" value="${v}"></label>`;
+  }
+  if (f.type === "number") {
+    return `<label>${f.label}<input type="number" step="0.01" id="${id}" value="${value ?? ""}"></label>`;
+  }
+  if (f.type === "text-list") {
+    const listId = id + "-list";
+    return `<label class="${f.full ? "full" : ""}">${f.label}
+      <input list="${listId}" id="${id}" value="${escapeHtml(value || "")}">
+      <datalist id="${listId}">${popisHistory.map(p => `<option value="${escapeHtml(p)}">`).join("")}</datalist>
+    </label>`;
+  }
+  return `<label class="${f.full ? "full" : ""}">${f.label}<input type="text" id="${id}" value="${escapeHtml(value || "")}"></label>`;
+}
+
+function toLocalDatetimeInput(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function openPoruchaModal(id) {
+  state.currentPoruchaId = id;
+  const modal = document.getElementById("modal-porucha");
+  const form = document.getElementById("porucha-form");
+  document.getElementById("modal-title").textContent = id ? "Upraviť poruchu" : "Nová porucha";
+
+  let data = {};
+  if (id) {
+    data = await api("/poruchy/" + id);
+  } else {
+    data = { stav: "Otvorená" };
+  }
+
+  // história popisov pre autocomplete (z aktuálne načítaného zoznamu)
+  popisHistory = Array.from(new Set(
+    Array.from(document.querySelectorAll("#poruchy-tbody tr td:nth-child(8)")).map(td => td.textContent).filter(Boolean)
+  ));
+
+  form.innerHTML = PORUCHA_FIELDS.map(f => inputHtmlFor(f, data[f.key])).join("");
+
+  // priradenia
+  fillSelect("pr-technik", state.technici, "id", "meno", null);
+  renderPriradeniaList(data.priradenia || []);
+  document.getElementById("priradenie-add-row").classList.toggle("hidden", !id);
+  if (!id) {
+    document.getElementById("priradenia-list").innerHTML = "<p style='color:var(--muted);font-size:13px;'>Priradenia technikov je možné pridať až po uložení poruchy.</p>";
+  }
+  document.getElementById("vytazenost-hint").classList.add("hidden");
+
+  // vyťaženosť sa prepočíta pri zmene plánovaného dátumu
+  const planEl = document.getElementById("pf-planovany_datum");
+  if (planEl) planEl.addEventListener("change", () => {
+    if (planEl.value) showVytazenostHint(planEl.value.slice(0, 10));
+  });
+
+  modal.classList.remove("hidden");
+}
+
+function renderPriradeniaList(items) {
+  const el = document.getElementById("priradenia-list");
+  if (!items.length) { el.innerHTML = "<p style='color:var(--muted);font-size:13px;'>Zatiaľ žiadni priradení technici.</p>"; return; }
+  el.innerHTML = "";
+  items.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "priradenie-row";
+    const aktivny = !p.datum_do || p.datum_do >= new Date().toISOString().slice(0, 10);
+    row.innerHTML = `
+      <span><b>${escapeHtml(p.technik_meno)}</b> — ${fmtDate(p.datum_od)} ${p.datum_do ? "→ " + fmtDate(p.datum_do) : "(aktívny)"}</span>
+      ${aktivny ? `<button class="btn-secondary" data-priradenie-end="${p.id}">Ukončiť dnes</button>` : ""}
+    `;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("[data-priradenie-end]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const pid = btn.dataset.priradenieEnd;
+      await api("/priradenia/" + pid, { method: "PATCH", body: JSON.stringify({ datum_do: new Date().toISOString().slice(0, 10) }) });
+      const data = await api("/poruchy/" + state.currentPoruchaId);
+      renderPriradeniaList(data.priradenia || []);
+      loadPoruchy();
+    });
+  });
+}
+
+document.getElementById("pr-add-btn").addEventListener("click", async () => {
+  if (!state.currentPoruchaId) return;
+  const technik_id = document.getElementById("pr-technik").value;
+  const datum_od = document.getElementById("pr-od").value;
+  const datum_do = document.getElementById("pr-do").value || null;
+  if (!technik_id || !datum_od) { alert("Vyber technika a dátum od."); return; }
+
+  const vyt = await api("/technici/vytazenost?datum=" + datum_od);
+  const rec = vyt.find(v => String(v.id) === String(technik_id));
+  if (rec && rec.pocet_poruch > 0) {
+    const ok = confirm(`Technik ${rec.meno} už má v tento deň priradených ${rec.pocet_poruch} porúch. Naozaj chceš pridať ďalšiu?`);
+    if (!ok) return;
+  }
+
+  await api("/priradenia", {
+    method: "POST",
+    body: JSON.stringify({ porucha_id: state.currentPoruchaId, technik_id: Number(technik_id), datum_od, datum_do }),
+  });
+  const data = await api("/poruchy/" + state.currentPoruchaId);
+  renderPriradeniaList(data.priradenia || []);
+  document.getElementById("pr-od").value = "";
+  document.getElementById("pr-do").value = "";
+  loadPoruchy();
+});
+
+async function showVytazenostHint(datum) {
+  const hint = document.getElementById("vytazenost-hint");
+  try {
+    const vyt = await api("/technici/vytazenost?datum=" + datum);
+    hint.innerHTML = "<b>Vyťaženosť technikov na " + fmtDate(datum) + ":</b><br>" +
+      vyt.map(v => `${escapeHtml(v.meno)}: ${v.pocet_poruch > 0 ? `<b class="warn">${v.pocet_poruch}</b>` : "0"} porúch`).join(" · ");
+    hint.classList.remove("hidden");
+  } catch (e) { /* ticho ignorovať */ }
+}
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  document.getElementById("modal-porucha").classList.add("hidden");
+});
+
+document.getElementById("btn-nova-porucha").addEventListener("click", () => openPoruchaModal(null));
+
+document.getElementById("modal-save").addEventListener("click", async () => {
+  const payload = {};
+  PORUCHA_FIELDS.forEach(f => {
+    const el = document.getElementById("pf-" + f.key);
+    if (!el) return;
+    if (f.type === "checkbox") { payload[f.key] = el.checked; return; }
+    if (f.type === "ciselnik") { payload[f.key] = el.value ? Number(el.value) : null; return; }
+    if (f.type === "number") { payload[f.key] = el.value === "" ? null : Number(el.value); return; }
+    if (f.type === "datetime") { payload[f.key] = el.value ? new Date(el.value).toISOString() : null; return; }
+    if (f.type === "date") { payload[f.key] = el.value || null; return; }
+    payload[f.key] = el.value || null;
+  });
+
+  try {
+    if (state.currentPoruchaId) {
+      await api("/poruchy/" + state.currentPoruchaId, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      const created = await api("/poruchy", { method: "POST", body: JSON.stringify(payload) });
+      state.currentPoruchaId = created.id;
+      alert("Porucha bola vytvorená. Teraz jej môžeš priradiť technikov.");
+      openPoruchaModal(created.id);
+      loadPoruchy();
+      loadDashboard();
+      return;
+    }
+    document.getElementById("modal-porucha").classList.add("hidden");
+    loadPoruchy();
+    loadDashboard();
+  } catch (e) {
+    alert("Chyba pri ukladaní: " + e.message);
+  }
+});
+
+// ---------------------------------------------------------------------
+// Prehľad
+// ---------------------------------------------------------------------
+function initPrehladSelectors() {
+  const mesiacSel = document.getElementById("p-mesiac");
+  const rokSel = document.getElementById("p-rok");
+  const now = new Date();
+  mesiacSel.innerHTML = ["Január","Február","Marec","Apríl","Máj","Jún","Júl","August","September","Október","November","December"]
+    .map((m, i) => `<option value="${i+1}" ${i+1 === now.getMonth()+1 ? "selected" : ""}>${m}</option>`).join("");
+  let rokOpts = "";
+  for (let r = now.getFullYear(); r >= now.getFullYear() - 3; r--) {
+    rokOpts += `<option value="${r}" ${r === now.getFullYear() ? "selected" : ""}>${r}</option>`;
+  }
+  rokSel.innerHTML = rokOpts;
+  mesiacSel.addEventListener("change", loadPrehlad);
+  rokSel.addEventListener("change", loadPrehlad);
+}
+
+async function loadPrehlad() {
+  const mesiac = document.getElementById("p-mesiac").value;
+  const rok = document.getElementById("p-rok").value;
+  const data = await api(`/prehlad/mesiac?rok=${rok}&mesiac=${mesiac}`);
+  document.getElementById("p-suhrn").textContent =
+    `${data.suhrn.pocet_poruch || 0} porúch, ${fmtMoney(data.suhrn.trzba_spolu || 0)}`;
+  const tbody = document.getElementById("prehlad-tbody");
+  if (!data.podla_zakazky.length) { tbody.innerHTML = "<tr><td colspan='3'>Žiadne dáta za toto obdobie.</td></tr>"; return; }
+  tbody.innerHTML = data.podla_zakazky.map(z => `
+    <tr><td>${z.cislo_zakazky || "—"}</td><td>${z.pocet_poruch}</td><td>${fmtMoney(z.trzba)}</td></tr>
+  `).join("");
+}
+
+// ---------------------------------------------------------------------
+// Technici
+// ---------------------------------------------------------------------
+async function loadTechniciView() {
+  const all = await api("/technici?aktivne_len=false");
+  const el = document.getElementById("technici-list");
+  el.innerHTML = "";
+  all.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "card-item" + (t.aktivny ? "" : " inactive");
+    row.innerHTML = `<span>${escapeHtml(t.meno)} ${t.aktivny ? "" : "(neaktívny)"}</span>
+      ${t.aktivny ? `<button class="btn-danger" data-deact-tech="${t.id}">Deaktivovať</button>` : ""}`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("[data-deact-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Deaktivovať technika?")) return;
+      await api("/technici/" + btn.dataset.deactTech + "/deaktivovat", { method: "PATCH" });
+      loadTechniciView();
+      loadCiselnikyATechnici();
+    });
+  });
+}
+
+document.getElementById("nt-add").addEventListener("click", async () => {
+  const meno = document.getElementById("nt-meno").value.trim();
+  if (!meno) return;
+  await api("/technici", { method: "POST", body: JSON.stringify({ meno }) });
+  document.getElementById("nt-meno").value = "";
+  loadTechniciView();
+  loadCiselnikyATechnici();
+});
+
+// ---------------------------------------------------------------------
+// Nastavenia — číselníky
+// ---------------------------------------------------------------------
+const CISELNIK_LABELS = { dopady: "Dopad (PP / OS / KU / TKZ)", typy: "Typ (OPR / REKL / CZ / PT)", media: "Médium" };
+
+async function loadNastaveniaView() {
+  const container = document.getElementById("ciselniky-container");
+  container.innerHTML = "";
+  for (const nazov of ["dopady", "typy", "media"]) {
+    const items = await api(`/ciselniky/${nazov}?aktivne_len=false`);
+    const block = document.createElement("div");
+    block.style.marginBottom = "24px";
+    block.innerHTML = `
+      <h3>${CISELNIK_LABELS[nazov]}</h3>
+      <div class="add-row">
+        <input placeholder="Kód (napr. NOV)" id="new-${nazov}-kod" style="width:100px;">
+        <input placeholder="Názov" id="new-${nazov}-nazov" style="width:220px;">
+        <button class="btn-primary" data-add-cis="${nazov}">Pridať</button>
+      </div>
+      <div class="card-list" id="list-${nazov}"></div>
+    `;
+    container.appendChild(block);
+    const listEl = block.querySelector(`#list-${nazov}`);
+    items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "card-item" + (it.aktivny ? "" : " inactive");
+      row.innerHTML = `<span><b>${escapeHtml(it.kod)}</b> — ${escapeHtml(it.nazov)} ${it.aktivny ? "" : "(neaktívne)"}</span>
+        ${it.aktivny ? `<button class="btn-danger" data-deact-cis="${nazov}:${it.id}">Deaktivovať</button>` : ""}`;
+      listEl.appendChild(row);
+    });
+  }
+  container.querySelectorAll("[data-add-cis]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const nazov = btn.dataset.addCis;
+      const kod = document.getElementById(`new-${nazov}-kod`).value.trim();
+      const nazovVal = document.getElementById(`new-${nazov}-nazov`).value.trim();
+      if (!kod || !nazovVal) { alert("Vyplň kód aj názov."); return; }
+      await api(`/ciselniky/${nazov}`, { method: "POST", body: JSON.stringify({ kod, nazov: nazovVal }) });
+      loadNastaveniaView();
+      loadCiselnikyATechnici();
+    });
+  });
+  container.querySelectorAll("[data-deact-cis]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const [nazov, id] = btn.dataset.deactCis.split(":");
+      if (!confirm("Deaktivovať položku?")) return;
+      await api(`/ciselniky/${nazov}/${id}/deaktivovat`, { method: "PATCH" });
+      loadNastaveniaView();
+      loadCiselnikyATechnici();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------
+// Inicializácia appky
+// ---------------------------------------------------------------------
+async function initApp() {
+  showApp();
+  initPrehladSelectors();
+  await loadCiselnikyATechnici();
+  await loadDashboard();
+  await loadPoruchy();
+}
+
+(async function boot() {
+  if (loadAuth()) {
+    try {
+      await api("/me");
+      await initApp();
+      return;
+    } catch (e) {
+      clearAuth();
+    }
+  }
+  showLogin();
+})();
+
+})();
+</script>
+</body>
+</html>
