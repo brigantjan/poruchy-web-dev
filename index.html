@@ -300,6 +300,18 @@ function fmtMoney(v) {
 function ltClass(lt) {
   return { "zelená": "zelena", "oranžová": "oranzova", "červená": "cervena", "sivá": "siva" }[lt] || "";
 }
+function ltLabel(r) {
+  // Textová interpretácia LT stavu (farba/kategória sa počíta na backende,
+  // text si volíme vo frontende, aby dával zmysel dispečérke):
+  //  - červená  -> "Po LT" (termín nestíhaš / nestihol si)
+  //  - sivá     -> "—"      (Stornovaná, LT sa nerieši)
+  //  - zelená/oranžová + Zrealizovaná -> "OK" (stihol si)
+  //  - zelená/oranžová + inak (Otvorená/Zaparkovaná) -> "Do LT" (ešte stíhaš)
+  if (r.lt_stav === "červená") return "Po LT";
+  if (r.lt_stav === "sivá") return "—";
+  if (r.stav === "Zrealizovaná") return "OK";
+  return "Do LT";
+}
 
 // ---------------------------------------------------------------------
 // Login
@@ -463,7 +475,7 @@ function renderPoruchyTable(rows) {
     tr.addEventListener("click", () => openPoruchaModal(r.id));
     tr.innerHTML = `
       <td>${r.stav}</td>
-      <td><span class="badge badge-${ltClass(r.lt_stav)}">${r.lt_stav}</span></td>
+      <td><span class="badge badge-${ltClass(r.lt_stav)}">${ltLabel(r)}</span></td>
       <td>${r.externe_id || ""}</td>
       <td>${r.dopad_kod || ""}</td>
       <td>${r.typ_kod || ""}</td>
