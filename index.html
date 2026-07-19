@@ -7,12 +7,12 @@
 <title>Poruchy</title>
 <style>
   :root{
-    --zelena:#2e7d32; --zelena-bg:#e8f5e9;
+    --zelena:#1b5e20; --zelena-bg:#8fe38f;
     --oranzova:#ef6c00; --oranzova-bg:#fff3e0;
-    --cervena:#c62828; --cervena-bg:#ffebee;
+    --cervena:#b71c1c; --cervena-bg:#ffb3b3;
     --siva:#757575; --siva-bg:#f0f0f0;
     --modra:#1565c0; --modra-bg:#e3f2fd;
-    --zlta:#f9a825; --zlta-bg:#fffde7;
+    --zlta:#8a6100; --zlta-bg:#ffe066;
     --sidebar-bg:#1f2933; --sidebar-fg:#e4e7eb;
     --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
     --accent:#2563eb;
@@ -70,6 +70,8 @@
   tr.row-zaparkovana{background:var(--modra-bg);}
   tr.row-zaparkovana:hover{background:#cfe6fb;}
   tr.row-otvorena{background:#fff;}
+  tr.row-nenaplanovana{background:var(--cervena-bg);}
+  tr.row-nenaplanovana:hover{background:#ff9999;}
   .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;}
   .badge-zelena{background:var(--zelena-bg);color:var(--zelena);}
   .badge-oranzova{background:var(--oranzova-bg);color:var(--oranzova);}
@@ -101,6 +103,14 @@
   .technik-checkboxes{display:flex;flex-wrap:wrap;gap:10px;background:#f7f8fa;border-radius:4px;padding:8px;}
   .technik-checkboxes label{flex-direction:row!important;align-items:center;gap:4px;font-size:13px;color:var(--text);}
   .priradenie-add-box{background:#fbfbfc;border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:6px;}
+  #pr-od.pr-od-auto{background:#fff9db;border-color:#f0c419;}
+  .vytazenost-3day{border-collapse:collapse;margin-top:6px;font-size:11.5px;}
+  .vytazenost-3day th,.vytazenost-3day td{border:1px solid var(--border);padding:3px 6px;text-align:center;}
+  .vytazenost-3day th{background:#eef1f4;font-weight:600;}
+  .vytazenost-3day td.vt-0{background:var(--zelena-bg);}
+  .vytazenost-3day td.vt-1{background:var(--oranzova-bg);}
+  .vytazenost-3day td.vt-2{background:var(--cervena-bg);}
+  .vytazenost-3day td.vt-tech{text-align:left;font-weight:600;background:#fff;}
 
   .card-list{display:flex;flex-direction:column;gap:8px;}
   .card-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
@@ -128,6 +138,7 @@
       <div><span>Otvorené</span><b id="stat-otvorene">–</b></div>
       <div><span>Blíži sa LT 🟠</span><b id="stat-blizi">–</b></div>
       <div><span>Po LT 🔴</span><b id="stat-po-lt">–</b></div>
+      <div><span>Nenaplánované 🔴</span><b id="stat-nenaplanovane">–</b></div>
       <div><span>Tržba (mesiac)</span><b id="stat-trzba">–</b></div>
     </div>
     <nav>
@@ -233,7 +244,14 @@
     </div>
 
     <div class="form-grid" id="porucha-form"></div>
+    <div id="dup-warning" class="stav-warning hidden" style="background:var(--oranzova-bg);color:var(--oranzova);"></div>
     <div id="stav-warning" class="stav-warning hidden"></div>
+
+    <div class="section-title">Súvisiaca porucha</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Voliteľné — ak táto porucha súvisí s inou, vyhľadaj ju podľa ID alebo adresy.</div>
+    <input type="text" id="suvisiaca-search" placeholder="Hľadať podľa ID alebo adresy…" style="width:100%;">
+    <div id="suvisiaca-results" style="margin-top:4px;"></div>
+    <div id="suvisiaca-selected" style="margin-top:6px;font-size:13px;"></div>
 
     <div class="section-title">Priradenia technikov</div>
 
@@ -343,13 +361,14 @@ function fmtDateTime(v) {
   const pad = n => String(n).padStart(2, "0");
   return d.toLocaleDateString("sk-SK") + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
 }
-function rowStavClass(stav) {
+function rowStavClass(r) {
+  if (r.stav === "Otvorená" && !r.planovany_datum) return "row-nenaplanovana";
   return {
     "Zrealizovaná": "row-zrealizovana",
     "Stornovaná": "row-stornovana",
     "Zaparkovaná": "row-zaparkovana",
     "Otvorená": "row-otvorena",
-  }[stav] || "";
+  }[r.stav] || "";
 }
 function fmtMoney(v) {
   if (v === null || v === undefined) return "";
@@ -441,6 +460,7 @@ async function loadDashboard() {
     document.getElementById("stat-otvorene").textContent = d.otvorene ?? 0;
     document.getElementById("stat-blizi").textContent = d.blizi_sa_lt ?? 0;
     document.getElementById("stat-po-lt").textContent = d.po_lt ?? 0;
+    document.getElementById("stat-nenaplanovane").textContent = d.nenaplanovane ?? 0;
     document.getElementById("stat-trzba").textContent = fmtMoney(d.trzba_mesiac || 0);
   } catch (e) { console.error(e); }
 }
@@ -529,7 +549,7 @@ function renderPoruchyTable(rows) {
   tbody.innerHTML = "";
   rows.forEach(r => {
     const tr = document.createElement("tr");
-    tr.className = rowStavClass(r.stav);
+    tr.className = rowStavClass(r);
     tr.addEventListener("click", () => openPoruchaModal(r.id));
     const popis = r.popis || "", adresa = r.adresa || "", meno = r.meno_subjekt || "", real = r.technici_aktivni || "";
     tr.innerHTML = `
@@ -647,7 +667,17 @@ function toLocalDatetimeInput(iso) {
 let savingPorucha = false;
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function addDaysStr(dateStr, days) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  const pad = n => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
 }
 
 async function openPoruchaModal(id) {
@@ -682,9 +712,22 @@ async function openPoruchaModal(id) {
   realEl.addEventListener("input", handleStavChange);
   handleStavChange();
 
+  // upozornenie na duplicitné externé ID
+  const externeIdEl = document.getElementById("pf-externe_id");
+  let dupTimer = null;
+  externeIdEl.addEventListener("input", () => {
+    clearTimeout(dupTimer);
+    dupTimer = setTimeout(() => checkDuplicateExterneId(externeIdEl.value), 400);
+  });
+  document.getElementById("dup-warning").classList.add("hidden");
+
+  // súvisiaca porucha - vyhľadávanie
+  setupSuvisiacaPoruchaField(data.suvisiaca_porucha_id || null, id);
+
   // priradenia
   renderTechnikCheckboxes();
   document.getElementById("pr-od").value = "";
+  document.getElementById("pr-od").classList.remove("pr-od-auto");
   document.getElementById("pr-do").value = "";
   if (id) {
     renderPriradeniaList(data.priradenia || []);
@@ -692,12 +735,97 @@ async function openPoruchaModal(id) {
     renderPendingPriradeniaList();
   }
 
-  // vyťaženosť - vždy viditeľná, prepočíta sa pri zmene plánovaného dátumu
+  // vyťaženosť - vždy viditeľná, prepočíta sa pri zmene plánovaného dátumu; dátum 'od' sa auto-vyplní
   const planEl = document.getElementById("pf-planovany_datum");
-  planEl.addEventListener("change", refreshVytazenostForModal);
+  planEl.addEventListener("change", () => { autoFillPrOdFromPlan(); refreshVytazenostForModal(); });
+  autoFillPrOdFromPlan();
   refreshVytazenostForModal();
 
   modal.classList.remove("hidden");
+}
+
+function autoFillPrOdFromPlan() {
+  const planEl = document.getElementById("pf-planovany_datum");
+  const prOd = document.getElementById("pr-od");
+  if (!planEl || !prOd || !planEl.value) return;
+  const dateOnly = planEl.value.slice(0, 10);
+  if (!prOd.value || prOd.classList.contains("pr-od-auto")) {
+    prOd.value = dateOnly;
+    prOd.classList.add("pr-od-auto");
+  }
+}
+
+async function setupSuvisiacaPoruchaField(currentId, poruchaId) {
+  state.selectedSuvisiacaId = currentId || null;
+  const searchEl = document.getElementById("suvisiaca-search");
+  const resultsEl = document.getElementById("suvisiaca-results");
+  const selectedEl = document.getElementById("suvisiaca-selected");
+  searchEl.value = "";
+  resultsEl.innerHTML = "";
+
+  async function renderSelected() {
+    if (!state.selectedSuvisiacaId) {
+      selectedEl.innerHTML = "<span style='color:var(--muted);'>Žiadna súvisiaca porucha.</span>";
+      return;
+    }
+    try {
+      const p = await api("/poruchy/" + state.selectedSuvisiacaId);
+      selectedEl.innerHTML = `Súvisí s: <b>${escapeHtml(p.externe_id || ("#" + p.id))}</b> — ${escapeHtml(p.adresa || "")} <button type="button" class="btn-secondary" id="suvisiaca-clear-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;">Odobrať</button>`;
+      document.getElementById("suvisiaca-clear-btn").addEventListener("click", () => {
+        state.selectedSuvisiacaId = null;
+        renderSelected();
+      });
+    } catch (e) {
+      selectedEl.textContent = "Súvisiaca porucha (ID " + state.selectedSuvisiacaId + ") sa nepodarilo načítať.";
+    }
+  }
+  renderSelected();
+
+  let searchTimer = null;
+  searchEl.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = searchEl.value.trim();
+    if (!q) { resultsEl.innerHTML = ""; return; }
+    searchTimer = setTimeout(async () => {
+      try {
+        const rows = await api("/poruchy?hladat=" + encodeURIComponent(q) + "&limit=8");
+        const filtered = rows.filter(r => r.id !== poruchaId);
+        if (!filtered.length) { resultsEl.innerHTML = "<div style='font-size:12px;color:var(--muted);'>Nič nenájdené.</div>"; return; }
+        resultsEl.innerHTML = filtered.map(r => `
+          <div class="priradenie-row" style="cursor:pointer;" data-pick-id="${r.id}">
+            <span class="pr-info"><b>${escapeHtml(r.externe_id || ("#" + r.id))}</b> — ${escapeHtml(r.adresa || "")} <i>(${r.stav})</i></span>
+          </div>
+        `).join("");
+        resultsEl.querySelectorAll("[data-pick-id]").forEach(el => {
+          el.addEventListener("click", () => {
+            state.selectedSuvisiacaId = Number(el.dataset.pickId);
+            searchEl.value = "";
+            resultsEl.innerHTML = "";
+            renderSelected();
+          });
+        });
+      } catch (e) { /* tichá chyba pri vyhľadávaní */ }
+    }, 300);
+  });
+}
+
+async function checkDuplicateExterneId(val) {
+  const warn = document.getElementById("dup-warning");
+  const value = (val || "").trim();
+  if (!value) { warn.classList.add("hidden"); return; }
+  try {
+    const rows = await api("/poruchy?hladat=" + encodeURIComponent(value));
+    const match = rows.find(r =>
+      (r.externe_id || "").trim().toLowerCase() === value.toLowerCase() &&
+      r.id !== state.currentPoruchaId
+    );
+    if (match) {
+      warn.textContent = `Pozor: porucha s ID '${value}' už v systéme existuje (stav: ${match.stav}, adresa: ${match.adresa || "-"}). Skontroluj, či nejde o duplicitu.`;
+      warn.classList.remove("hidden");
+    } else {
+      warn.classList.add("hidden");
+    }
+  } catch (e) { /* tichá chyba - nejde o kritickú funkciu */ }
 }
 
 function handleStavChange() {
@@ -870,6 +998,7 @@ document.getElementById("pr-add-btn").addEventListener("click", async () => {
     }
     document.querySelectorAll(".pr-tech-cb:checked").forEach(cb => cb.checked = false);
     document.getElementById("pr-od").value = "";
+    document.getElementById("pr-od").classList.remove("pr-od-auto");
     document.getElementById("pr-do").value = "";
     refreshVytazenostForModal();
   } catch (e) {
@@ -878,19 +1007,29 @@ document.getElementById("pr-add-btn").addEventListener("click", async () => {
 });
 
 function refreshVytazenostForModal() {
-  showVytazenostHint(relevantVytazenostDate());
+  showVytazenost3Days(relevantVytazenostDate());
 }
 
-async function showVytazenostHint(datum) {
+async function showVytazenost3Days(baseDateStr) {
   const hint = document.getElementById("vytazenost-hint");
+  const dates = [0, 1, 2].map(i => addDaysStr(baseDateStr, i));
   try {
-    const vyt = await api("/technici/vytazenost?datum=" + datum);
-    if (!vyt.length) { hint.innerHTML = "Zatiaľ nie sú zadaní žiadni technici."; return; }
-    hint.innerHTML = "<b>Vyťaženosť technikov na " + fmtDate(datum) + ":</b><br>" +
-      vyt.map(v => {
-        const cls = v.pocet_poruch >= 2 ? "warn2" : (v.pocet_poruch === 1 ? "warn" : "");
-        return `${escapeHtml(v.meno)}: <b class="${cls}">${v.pocet_poruch}</b>`;
-      }).join(" · ");
+    const results = await Promise.all(dates.map(d => api("/technici/vytazenost?datum=" + d)));
+    if (!results[0].length) { hint.innerHTML = "Zatiaľ nie sú zadaní žiadni technici."; return; }
+    const technici = results[0].map(t => t.meno);
+    let html = `<b>Vyťaženosť technikov od ${fmtDate(dates[0])}:</b>`;
+    html += `<table class="vytazenost-3day"><thead><tr><th></th>${dates.map(d => `<th>${fmtDate(d)}</th>`).join("")}</tr></thead><tbody>`;
+    technici.forEach((meno, idx) => {
+      html += `<tr><td class="vt-tech">${escapeHtml(meno)}</td>`;
+      results.forEach(r => {
+        const pocet = r[idx] ? r[idx].pocet_poruch : 0;
+        const cls = pocet >= 2 ? "vt-2" : (pocet === 1 ? "vt-1" : "vt-0");
+        html += `<td class="${cls}">${pocet}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+    hint.innerHTML = html;
   } catch (e) { hint.textContent = "Vyťaženosť sa nepodarilo načítať."; }
 }
 
@@ -975,6 +1114,7 @@ document.getElementById("modal-save").addEventListener("click", async () => {
     payload[f.key] = el.value || null;
   });
   if (payload.stav === "Otvorená") payload.datum_realizacie = null;
+  payload.suvisiaca_porucha_id = state.selectedSuvisiacaId || null;
 
   const saveBtn = document.getElementById("modal-save");
   savingPorucha = true;
