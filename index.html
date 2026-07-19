@@ -130,7 +130,7 @@
   <div id="login-box">
     <h1>Poruchy — prihlásenie</h1>
     <div id="login-error"></div>
-    <input id="login-username" placeholder="Prihlasovacie meno" autocomplete="username">
+    <input id="login-email" type="email" placeholder="Email" autocomplete="email">
     <input id="login-password" type="password" placeholder="Heslo" autocomplete="current-password">
     <button id="login-btn">Prihlásiť sa</button>
   </div>
@@ -151,9 +151,10 @@
       <button data-view="prehlad">💰 Prehľad</button>
       <button data-view="technici">👷 Technici</button>
       <button data-view="nastavenia">⚙️ Nastavenia</button>
+      <button data-view="pouzivatelia" data-role="admin">👤 Používatelia</button>
     </nav>
     <div class="userbox">
-      Prihlásený: <b id="current-username">–</b> (<span id="current-role">–</span>)
+      Prihlásený: <b id="current-email">–</b> (<span id="current-role">–</span>)
       <button id="logout-btn">Odhlásiť sa</button>
     </div>
   </aside>
@@ -233,7 +234,43 @@
       <div id="ciselniky-container"></div>
     </section>
 
+    <!-- ===== Používatelia (len admin) ===== -->
+    <section id="view-pouzivatelia" class="view" data-role="admin">
+      <div class="view-header"><h1>Používatelia</h1></div>
+      <div class="add-row">
+        <input id="nu-email" type="email" placeholder="Email nového používateľa" style="width:220px;">
+        <input id="nu-heslo" type="text" placeholder="Heslo (aspoň 6 znakov)" style="width:180px;">
+        <select id="nu-rola">
+          <option value="dispecer">dispečer</option>
+          <option value="admin">admin</option>
+        </select>
+        <button class="btn-primary" id="nu-add">Vytvoriť</button>
+      </div>
+      <div class="card-list" id="pouzivatelia-list"></div>
+    </section>
+
   </main>
+</div>
+
+<!-- ===== Modal: úprava používateľa ===== -->
+<div class="modal-overlay hidden" id="modal-pouzivatel">
+  <div class="modal-box" style="width:420px;">
+    <h2>Upraviť používateľa</h2>
+    <div class="form-grid" style="grid-template-columns:1fr;">
+      <label>Email<input type="email" id="pu-email"></label>
+      <label>Rola<select id="pu-rola">
+        <option value="dispecer">dispečer</option>
+        <option value="admin">admin</option>
+      </select></label>
+      <label class="checkbox-row"><input type="checkbox" id="pu-aktivny"> Aktívny účet</label>
+      <label>Nové heslo (nechaj prázdne = bez zmeny)<input type="text" id="pu-heslo" placeholder="Nové heslo (aspoň 6 znakov)"></label>
+    </div>
+    <div id="pu-error" style="color:var(--cervena);font-size:13px;margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="pu-cancel">Zavrieť</button>
+      <button class="btn-primary" id="pu-save">Uložiť</button>
+    </div>
+  </div>
 </div>
 
 <!-- ===== Modal: porucha detail/edit ===== -->
@@ -316,28 +353,35 @@ const API_BASE = (() => {
 // Stav appky
 // ---------------------------------------------------------------------
 const state = {
-  token: null, role: null, username: null,
+  token: null, role: null, email: null,
   ciselniky: { dopady: [], typy: [], media: [] },
   technici: [],
   currentPoruchaId: null,
   pendingPriradenia: [],
+  editingUserId: null,
 };
 
 function saveAuth() {
-  localStorage.setItem("poruchy_auth", JSON.stringify({ token: state.token, role: state.role, username: state.username }));
+  localStorage.setItem("poruchy_auth", JSON.stringify({ token: state.token, role: state.role, email: state.email }));
 }
 function loadAuth() {
   try {
     const raw = localStorage.getItem("poruchy_auth");
     if (!raw) return false;
     const data = JSON.parse(raw);
-    state.token = data.token; state.role = data.role; state.username = data.username;
+    state.token = data.token; state.role = data.role; state.email = data.email;
     return !!state.token;
   } catch (e) { return false; }
 }
 function clearAuth() {
   localStorage.removeItem("poruchy_auth");
-  state.token = null; state.role = null; state.username = null;
+  state.token = null; state.role = null; state.email = null;
+}
+
+function applyRoleVisibility() {
+  document.querySelectorAll("[data-role]").forEach(el => {
+    el.classList.toggle("hidden", state.role !== el.dataset.role);
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -416,30 +460,31 @@ function showLogin() {
 function showApp() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("current-username").textContent = state.username;
+  document.getElementById("current-email").textContent = state.email;
   document.getElementById("current-role").textContent = state.role;
+  applyRoleVisibility();
 }
 
 document.getElementById("login-btn").addEventListener("click", doLogin);
 document.getElementById("login-password").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
 
 async function doLogin() {
-  const username = document.getElementById("login-username").value.trim();
+  const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
   const errBox = document.getElementById("login-error");
   errBox.textContent = "";
-  if (!username || !password) { errBox.textContent = "Vyplň meno aj heslo."; return; }
+  if (!email || !password) { errBox.textContent = "Vyplň email aj heslo."; return; }
   try {
     const res = await fetch(API_BASE + "/login", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      throw new Error(j.detail || "Nesprávne meno alebo heslo.");
+      throw new Error(j.detail || "Nesprávny email alebo heslo.");
     }
     const data = await res.json();
-    state.token = data.token; state.role = data.role; state.username = data.username;
+    state.token = data.token; state.role = data.role; state.email = data.email;
     saveAuth();
     await initApp();
   } catch (e) {
@@ -464,6 +509,7 @@ document.querySelectorAll("#sidebar nav button").forEach(btn => {
     if (btn.dataset.view === "prehlad") loadPrehlad();
     if (btn.dataset.view === "technici") loadTechniciView();
     if (btn.dataset.view === "nastavenia") loadNastaveniaView();
+    if (btn.dataset.view === "pouzivatelia") loadPouzivateliaView();
   });
 });
 
@@ -1289,6 +1335,76 @@ async function loadNastaveniaView() {
     });
   });
 }
+
+// ---------------------------------------------------------------------
+// Používatelia (len admin)
+// ---------------------------------------------------------------------
+async function loadPouzivateliaView() {
+  if (state.role !== "admin") return;
+  const all = await api("/users");
+  const el = document.getElementById("pouzivatelia-list");
+  el.innerHTML = "";
+  all.forEach(u => {
+    const row = document.createElement("div");
+    row.className = "card-item" + (u.aktivny ? "" : " inactive");
+    row.innerHTML = `<span><b>${escapeHtml(u.email)}</b> — ${u.role} ${u.aktivny ? "" : "(neaktívny)"}</span>
+      <button class="btn-secondary" data-edit-user="${u.id}">Upraviť</button>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("[data-edit-user]").forEach(btn => {
+    btn.addEventListener("click", () => openPouzivatelModal(all.find(u => u.id === Number(btn.dataset.editUser))));
+  });
+}
+
+document.getElementById("nu-add").addEventListener("click", async () => {
+  const email = document.getElementById("nu-email").value.trim();
+  const heslo = document.getElementById("nu-heslo").value;
+  const rola = document.getElementById("nu-rola").value;
+  if (!email || !heslo) { alert("Vyplň email aj heslo."); return; }
+  if (heslo.length < 6) { alert("Heslo musí mať aspoň 6 znakov."); return; }
+  try {
+    await api("/users", { method: "POST", body: JSON.stringify({ email, password: heslo, role: rola }) });
+    document.getElementById("nu-email").value = "";
+    document.getElementById("nu-heslo").value = "";
+    loadPouzivateliaView();
+  } catch (e) {
+    alert("Chyba: " + e.message);
+  }
+});
+
+function openPouzivatelModal(u) {
+  state.editingUserId = u.id;
+  document.getElementById("pu-email").value = u.email;
+  document.getElementById("pu-rola").value = u.role;
+  document.getElementById("pu-aktivny").checked = u.aktivny;
+  document.getElementById("pu-heslo").value = "";
+  document.getElementById("pu-error").textContent = "";
+  document.getElementById("modal-pouzivatel").classList.remove("hidden");
+}
+
+document.getElementById("pu-cancel").addEventListener("click", () => {
+  document.getElementById("modal-pouzivatel").classList.add("hidden");
+});
+
+document.getElementById("pu-save").addEventListener("click", async () => {
+  const errBox = document.getElementById("pu-error");
+  errBox.textContent = "";
+  const heslo = document.getElementById("pu-heslo").value;
+  if (heslo && heslo.length < 6) { errBox.textContent = "Heslo musí mať aspoň 6 znakov."; return; }
+  const payload = {
+    email: document.getElementById("pu-email").value.trim(),
+    role: document.getElementById("pu-rola").value,
+    aktivny: document.getElementById("pu-aktivny").checked,
+  };
+  if (heslo) payload.password = heslo;
+  try {
+    await api("/users/" + state.editingUserId, { method: "PATCH", body: JSON.stringify(payload) });
+    document.getElementById("modal-pouzivatel").classList.add("hidden");
+    loadPouzivateliaView();
+  } catch (e) {
+    errBox.textContent = e.message;
+  }
+});
 
 // ---------------------------------------------------------------------
 // Inicializácia appky
