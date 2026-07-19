@@ -41,6 +41,9 @@
   #sidebar h2{padding:12px 10px;margin:0;font-size:14px;border-bottom:1px solid #37414c;}
   #sidebar .stats{padding:10px;font-size:11.5px;border-bottom:1px solid #37414c;}
   #sidebar .stats div{display:flex;justify-content:space-between;margin-bottom:6px;gap:4px;}
+  #sidebar .stats div.stat-clickable{cursor:pointer;border-radius:3px;padding:2px 4px;margin:-2px -4px 4px;}
+  #sidebar .stats div.stat-clickable:hover{background:#37414c;}
+  #quick-filter-banner{background:var(--oranzova-bg);color:var(--oranzova);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;}
   #sidebar nav{flex:1;padding:8px 0;}
   #sidebar nav button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--sidebar-fg);padding:9px 10px;font-size:12.5px;}
   #sidebar nav button:hover,#sidebar nav button.active{background:#37414c;}
@@ -61,7 +64,7 @@
   .filters select,.filters input{font-size:13px;padding:5px 6px;}
 
   /* ---------- Table wrapper ---------- */
-  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:76vh;}
+  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:55vh;}
   /* Farba riadku podľa STAVU poruchy (nie podľa LT) - rovnaká logika ako v DISPECING */
   tr.row-zrealizovana{background:var(--zelena-bg);}
   tr.row-zrealizovana:hover{background:#d4ecd6;}
@@ -140,10 +143,10 @@
   <aside id="sidebar">
     <h2>⚡ Poruchy</h2>
     <div class="stats" id="sidebar-stats">
-      <div><span>Otvorené</span><b id="stat-otvorene">–</b></div>
-      <div><span>Blíži sa LT 🟠</span><b id="stat-blizi">–</b></div>
-      <div><span>Po LT 🔴</span><b id="stat-po-lt">–</b></div>
-      <div><span>Nenaplánované 🔴</span><b id="stat-nenaplanovane">–</b></div>
+      <div data-stat-row="otvorene"><span>Otvorené</span><b id="stat-otvorene">–</b></div>
+      <div data-stat-row="blizi_sa_lt"><span>Blíži sa LT 🟠</span><b id="stat-blizi">–</b></div>
+      <div data-stat-row="po_lt"><span>Po LT 🔴</span><b id="stat-po-lt">–</b></div>
+      <div data-stat-row="nenaplanovane"><span>Nenaplánované 🔴</span><b id="stat-nenaplanovane">–</b></div>
       <div><span>Tržba (mesiac)</span><b id="stat-trzba">–</b></div>
     </div>
     <nav>
@@ -166,6 +169,10 @@
       <div class="view-header">
         <h1>Zoznam porúch</h1>
         <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
+      </div>
+      <div id="quick-filter-banner" class="hidden">
+        <span id="quick-filter-text"></span>
+        <button class="btn-secondary" id="quick-filter-clear">Zobraziť všetky poruchy</button>
       </div>
       <div class="filters">
         <select id="f-stav"><option value="">Stav: všetky</option></select>
@@ -359,6 +366,15 @@ const state = {
   currentPoruchaId: null,
   pendingPriradenia: [],
   editingUserId: null,
+  quickFilter: null,
+  dashboardCounts: {},
+};
+
+const QUICK_FILTER_LABELS = {
+  otvorene: "Otvorené",
+  blizi_sa_lt: "Blíži sa LT 🟠",
+  po_lt: "Po LT 🔴",
+  nenaplanovane: "Nenaplánované 🔴",
 };
 
 function saveAuth() {
@@ -524,8 +540,43 @@ async function loadDashboard() {
     document.getElementById("stat-po-lt").textContent = d.po_lt ?? 0;
     document.getElementById("stat-nenaplanovane").textContent = d.nenaplanovane ?? 0;
     document.getElementById("stat-trzba").textContent = fmtMoney(d.trzba_mesiac || 0);
+
+    state.dashboardCounts = {
+      otvorene: d.otvorene ?? 0,
+      blizi_sa_lt: d.blizi_sa_lt ?? 0,
+      po_lt: d.po_lt ?? 0,
+      nenaplanovane: d.nenaplanovane ?? 0,
+    };
+    document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
+      const key = row.dataset.statRow;
+      row.classList.toggle("stat-clickable", state.dashboardCounts[key] > 0);
+    });
   } catch (e) { console.error(e); }
 }
+
+document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
+  row.addEventListener("click", () => {
+    const key = row.dataset.statRow;
+    if (!(state.dashboardCounts[key] > 0)) return;
+    applyQuickFilter(key);
+  });
+});
+
+function applyQuickFilter(key) {
+  state.quickFilter = key;
+  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-hladat").value = "";
+  document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
+  document.querySelector('#sidebar nav button[data-view="poruchy"]').classList.add("active");
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-poruchy").classList.add("active");
+  loadPoruchy();
+}
+
+document.getElementById("quick-filter-clear").addEventListener("click", () => {
+  state.quickFilter = null;
+  loadPoruchy();
+});
 
 // ---------------------------------------------------------------------
 // Číselníky + technici (cache)
@@ -567,33 +618,48 @@ function fillSelect(elId, items, valKey, labelKey, placeholder) {
 // Zoznam porúch
 // ---------------------------------------------------------------------
 ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => {
-  document.getElementById(id).addEventListener("change", loadPoruchy);
+  document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; loadPoruchy(); });
 });
 let hladatTimer = null;
 document.getElementById("f-hladat").addEventListener("input", () => {
+  state.quickFilter = null;
   clearTimeout(hladatTimer);
   hladatTimer = setTimeout(loadPoruchy, 350);
 });
 document.getElementById("f-reset").addEventListener("click", () => {
+  state.quickFilter = null;
   ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-hladat").value = "";
   loadPoruchy();
 });
 
 async function loadPoruchy() {
+  const banner = document.getElementById("quick-filter-banner");
+  if (state.quickFilter) {
+    document.getElementById("quick-filter-text").textContent =
+      "Rýchly filter: " + (QUICK_FILTER_LABELS[state.quickFilter] || state.quickFilter);
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+
   const params = new URLSearchParams();
-  const stav = document.getElementById("f-stav").value;
-  const dopad = document.getElementById("f-dopad").value;
-  const typ = document.getElementById("f-typ").value;
-  const medium = document.getElementById("f-medium").value;
-  const technik = document.getElementById("f-technik").value;
-  const hladat = document.getElementById("f-hladat").value.trim();
-  if (stav) params.set("stav", stav);
-  if (dopad) params.set("dopad_id", dopad);
-  if (typ) params.set("typ_id", typ);
-  if (medium) params.set("medium_id", medium);
-  if (technik) params.set("technik_id", technik);
-  if (hladat) params.set("hladat", hladat);
+  if (state.quickFilter) {
+    params.set("rychly", state.quickFilter);
+  } else {
+    const stav = document.getElementById("f-stav").value;
+    const dopad = document.getElementById("f-dopad").value;
+    const typ = document.getElementById("f-typ").value;
+    const medium = document.getElementById("f-medium").value;
+    const technik = document.getElementById("f-technik").value;
+    const hladat = document.getElementById("f-hladat").value.trim();
+    if (stav) params.set("stav", stav);
+    if (dopad) params.set("dopad_id", dopad);
+    if (typ) params.set("typ_id", typ);
+    if (medium) params.set("medium_id", medium);
+    if (technik) params.set("technik_id", technik);
+    if (hladat) params.set("hladat", hladat);
+  }
 
   const tbody = document.getElementById("poruchy-tbody");
   tbody.innerHTML = "<tr><td colspan='22'>Načítavam…</td></tr>";
@@ -1261,7 +1327,12 @@ async function loadTechniciView() {
     const row = document.createElement("div");
     row.className = "card-item" + (t.aktivny ? "" : " inactive");
     row.innerHTML = `<span>${escapeHtml(t.meno)} ${t.aktivny ? "" : "(neaktívny)"}</span>
-      ${t.aktivny ? `<button class="btn-danger" data-deact-tech="${t.id}">Deaktivovať</button>` : ""}`;
+      <span style="display:flex;gap:6px;">
+        ${t.aktivny
+          ? `<button class="btn-secondary" data-deact-tech="${t.id}">Deaktivovať</button>`
+          : `<button class="btn-secondary" data-act-tech="${t.id}">Aktivovať</button>`}
+        <button class="btn-danger" data-delete-tech="${t.id}">Vymazať</button>
+      </span>`;
     el.appendChild(row);
   });
   el.querySelectorAll("[data-deact-tech]").forEach(btn => {
@@ -1270,6 +1341,25 @@ async function loadTechniciView() {
       await api("/technici/" + btn.dataset.deactTech + "/deaktivovat", { method: "PATCH" });
       loadTechniciView();
       loadCiselnikyATechnici();
+    });
+  });
+  el.querySelectorAll("[data-act-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await api("/technici/" + btn.dataset.actTech + "/aktivovat", { method: "PATCH" });
+      loadTechniciView();
+      loadCiselnikyATechnici();
+    });
+  });
+  el.querySelectorAll("[data-delete-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Natrvalo vymazať technika? Táto akcia sa nedá vrátiť späť.")) return;
+      try {
+        await api("/technici/" + btn.dataset.deleteTech, { method: "DELETE" });
+        loadTechniciView();
+        loadCiselnikyATechnici();
+      } catch (e) {
+        alert("Chyba: " + e.message);
+      }
     });
   });
 }
