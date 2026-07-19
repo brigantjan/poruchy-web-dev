@@ -20,7 +20,7 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:#f7f8fa;}
   button{cursor:pointer;font-family:inherit;}
-  input,select,textarea{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;}
   table{border-collapse:collapse;width:100%;font-size:11.5px;table-layout:fixed;}
   th,td{padding:4px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   th{background:#eef1f4;position:sticky;top:0;cursor:pointer;user-select:none;font-size:11px;}
@@ -80,14 +80,19 @@
 
   /* ---------- Modal ---------- */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:50;}
-  .modal-box{background:#fff;border-radius:8px;width:720px;max-width:100%;padding:24px;}
-  .modal-box h2{margin-top:0;}
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
-  .form-grid label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px;}
+  .modal-box{background:#dbe2ec;border-radius:8px;width:820px;max-width:100%;padding:18px;}
+  .modal-box h2{margin-top:0;margin-bottom:10px;}
+  .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;}
+  .form-grid label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;}
   .form-grid label.full{grid-column:1/-1;}
   .checkbox-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);flex-direction:row!important;}
-  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;}
-  .section-title{font-weight:600;margin:18px 0 8px;border-top:1px solid var(--border);padding-top:14px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .section-title{font-weight:600;margin:12px 0 6px;border-top:1px solid #c4cddb;padding-top:10px;}
+  .top-id-row{display:grid;grid-template-columns:160px 1fr;gap:12px;margin-bottom:2px;}
+  .top-id-row label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;}
+  .dup-warning-top{background:var(--cervena-bg);color:var(--cervena);border-radius:4px;padding:7px 10px;font-size:13px;font-weight:600;margin-top:6px;}
+  .suvisiaca-compact{margin-top:6px;font-size:12.5px;}
+  .suvisiaca-compact .section-title{margin:8px 0 4px;padding-top:8px;font-size:13px;}
   .priradenie-row{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap;}
   .priradenie-row span.pr-info{flex:1;}
   .priradenie-edit-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#f7f8fa;border-radius:4px;padding:6px;margin:4px 0;}
@@ -243,15 +248,26 @@
       <span id="paste-status" style="font-size:12px;color:var(--muted);margin-left:8px;"></span>
     </div>
 
-    <div class="form-grid" id="porucha-form"></div>
-    <div id="dup-warning" class="stav-warning hidden" style="background:var(--oranzova-bg);color:var(--oranzova);"></div>
-    <div id="stav-warning" class="stav-warning hidden"></div>
+    <div class="top-id-row">
+      <label>Stav<select id="pf-stav">
+        <option value="Otvorená">Otvorená</option>
+        <option value="Zrealizovaná">Zrealizovaná</option>
+        <option value="Stornovaná">Stornovaná</option>
+        <option value="Zaparkovaná">Zaparkovaná</option>
+      </select></label>
+      <label>Externé ID (Telekom)<input type="text" id="pf-externe_id"></label>
+    </div>
+    <div id="dup-warning" class="dup-warning-top hidden"></div>
 
-    <div class="section-title">Súvisiaca porucha</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Voliteľné — ak táto porucha súvisí s inou, vyhľadaj ju podľa ID alebo adresy.</div>
-    <input type="text" id="suvisiaca-search" placeholder="Hľadať podľa ID alebo adresy…" style="width:100%;">
-    <div id="suvisiaca-results" style="margin-top:4px;"></div>
-    <div id="suvisiaca-selected" style="margin-top:6px;font-size:13px;"></div>
+    <div class="suvisiaca-compact">
+      <div class="section-title">Súvisiaca porucha</div>
+      <input type="text" id="suvisiaca-search" placeholder="Hľadať podľa ID alebo adresy…" style="width:100%;">
+      <div id="suvisiaca-results" style="margin-top:4px;"></div>
+      <div id="suvisiaca-selected" style="margin-top:4px;"></div>
+    </div>
+
+    <div class="form-grid" id="porucha-form"></div>
+    <div id="stav-warning" class="stav-warning hidden"></div>
 
     <div class="section-title">Priradenia technikov</div>
 
@@ -590,8 +606,6 @@ function escapeHtml(s) {
 // Modal: vytvorenie / editácia poruchy
 // ---------------------------------------------------------------------
 const PORUCHA_FIELDS = [
-  { key: "stav", label: "Stav", type: "select", options: ["Otvorená","Zrealizovaná","Stornovaná","Zaparkovaná"] },
-  { key: "externe_id", label: "Externé ID (Telekom)", type: "text" },
   { key: "dopad_id", label: "Dopad", type: "ciselnik", cis: "dopady" },
   { key: "typ_id", label: "Typ", type: "ciselnik", cis: "typy" },
   { key: "medium_id", label: "Médium", type: "ciselnik", cis: "media" },
@@ -705,21 +719,15 @@ async function openPoruchaModal(id) {
 
   form.innerHTML = PORUCHA_FIELDS.map(f => inputHtmlFor(f, data[f.key])).join("");
 
+  // Stav + Externé ID sú statické polia mimo dynamického form-grid (kvôli pozícii hore)
+  document.getElementById("pf-stav").value = data.stav || "Otvorená";
+  document.getElementById("pf-externe_id").value = data.externe_id || "";
+  document.getElementById("dup-warning").classList.add("hidden");
+
   // stav <-> dátum realizácie: vynútenie priamo v UI
-  const stavEl = document.getElementById("pf-stav");
   const realEl = document.getElementById("pf-datum_realizacie");
-  stavEl.addEventListener("change", handleStavChange);
   realEl.addEventListener("input", handleStavChange);
   handleStavChange();
-
-  // upozornenie na duplicitné externé ID
-  const externeIdEl = document.getElementById("pf-externe_id");
-  let dupTimer = null;
-  externeIdEl.addEventListener("input", () => {
-    clearTimeout(dupTimer);
-    dupTimer = setTimeout(() => checkDuplicateExterneId(externeIdEl.value), 400);
-  });
-  document.getElementById("dup-warning").classList.add("hidden");
 
   // súvisiaca porucha - vyhľadávanie
   setupSuvisiacaPoruchaField(data.suvisiaca_porucha_id || null, id);
@@ -820,7 +828,7 @@ async function checkDuplicateExterneId(val) {
       r.id !== state.currentPoruchaId
     );
     if (match) {
-      warn.textContent = `Pozor: porucha s ID '${value}' už v systéme existuje (stav: ${match.stav}, adresa: ${match.adresa || "-"}). Skontroluj, či nejde o duplicitu.`;
+      warn.textContent = `⚠ Porucha s ID '${value}' už v systéme existuje (stav: ${match.stav}, adresa: ${match.adresa || "-"}). Skontroluj, či nejde o duplicitu.`;
       warn.classList.remove("hidden");
     } else {
       warn.classList.add("hidden");
@@ -1069,12 +1077,26 @@ document.getElementById("paste-fill-btn").addEventListener("click", () => {
   const ltVal = parseSkDatetime(ltLine);
   if (ltEl && ltVal) ltEl.value = ltVal;
 
+  // hodnota bola nastavená programovo, nie napísaním - "input" event sa nespustí sám,
+  // preto kontrolu duplicity spúšťame explicitne
+  if (externeIdEl) checkDuplicateExterneId(idLine);
+
   statusEl.style.color = "var(--zelena)";
   statusEl.textContent = "Vyplnené — skontroluj a doplň Dopad/Typ/Médium/Popis.";
 });
 
 document.getElementById("modal-cancel").addEventListener("click", () => {
   document.getElementById("modal-porucha").classList.add("hidden");
+});
+
+// Stav a Externé ID sú statické polia (nie sú súčasťou dynamicky generovaného
+// form-grid) - ich listenery sa registrujú raz, nie pri každom otvorení modalu.
+document.getElementById("pf-stav").addEventListener("change", handleStavChange);
+let dupTimer = null;
+document.getElementById("pf-externe_id").addEventListener("input", (e) => {
+  clearTimeout(dupTimer);
+  const val = e.target.value;
+  dupTimer = setTimeout(() => checkDuplicateExterneId(val), 400);
 });
 
 document.getElementById("btn-nova-porucha").addEventListener("click", () => openPoruchaModal(null));
@@ -1102,7 +1124,10 @@ document.getElementById("modal-save").addEventListener("click", async () => {
     return;
   }
 
-  const payload = {};
+  const payload = {
+    stav: stavEl.value,
+    externe_id: document.getElementById("pf-externe_id").value || null,
+  };
   PORUCHA_FIELDS.forEach(f => {
     const el = document.getElementById("pf-" + f.key);
     if (!el) return;
