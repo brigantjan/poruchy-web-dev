@@ -70,7 +70,8 @@
 
   /* ---------- Stĺpcové filtre (druhý riadok hlavičky tabuľky porúch) ---------- */
   #poruchy-thead-row th{height:24px;}
-  #poruchy-filter-row th{position:sticky;top:24px;cursor:default;background:#fff;padding:3px 4px;font-weight:400;vertical-align:top;}
+  #poruchy-filter-row th{position:sticky;top:24px;cursor:default;background:#eef1f4;padding:3px 4px;font-weight:400;vertical-align:top;}
+  #poruchy-filter-row .col-filter{background:#fff;}
   #poruchy-filter-row .col-filter{width:100%;font-size:10.5px;padding:2px 3px;border-radius:3px;box-sizing:border-box;}
   .col-filter-datum{display:flex;flex-direction:column;gap:2px;}
   .col-filter-datum input{width:100%;}
@@ -96,6 +97,7 @@
   tr.row-nenaplanovana:hover{background:#ff9999;}
   tr.row-provizorna{background:var(--provizorna-bg);}
   tr.row-provizorna:hover{background:#d4ffa0;}
+  tr.row-just-saved{outline:3px solid var(--accent);outline-offset:-3px;}
   .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;}
   .badge-zelena{background:var(--zelena-bg);color:var(--zelena);}
   .badge-oranzova{background:var(--oranzova-bg);color:var(--oranzova);}
@@ -454,6 +456,7 @@ const state = {
   editingUserId: null,
   quickFilter: null,
   dashboardCounts: {},
+  lastSavedId: null,
 };
 
 const QUICK_FILTER_LABELS = {
@@ -812,6 +815,61 @@ function initColumnResize() {
 }
 initColumnResize();
 
+// Zostaví URLSearchParams presne podľa aktuálne aktívnych filtrov (rýchly filter
+// z dashboardu, alebo stĺpcové filtre nad tabuľkou). Používa loadPoruchy() aj
+// export do Excelu, aby export vždy zodpovedal presne tomu, čo je na obrazovke.
+function buildPoruchyParams() {
+  const params = new URLSearchParams();
+  if (state.quickFilter) {
+    params.set("rychly", state.quickFilter);
+    return params;
+  }
+  const stav = document.getElementById("f-stav").value;
+  const dopad = document.getElementById("f-dopad").value;
+  const typ = document.getElementById("f-typ").value;
+  const medium = document.getElementById("f-medium").value;
+  const technik = document.getElementById("f-technik").value;
+  const hladat = document.getElementById("f-hladat").value.trim();
+  const zadanieOd = document.getElementById("f-zadanie-od").value;
+  const zadanieDo = document.getElementById("f-zadanie-do").value;
+  const ltOd = document.getElementById("f-lt-od").value;
+  const ltDo = document.getElementById("f-lt-do").value;
+  const realizaciaOd = document.getElementById("f-realizacia-od").value;
+  const realizaciaDo = document.getElementById("f-realizacia-do").value;
+  const spmZadanyOd = document.getElementById("f-spm-zadany-od").value;
+  const spmZadanyDo = document.getElementById("f-spm-zadany-do").value;
+  const spmSchvalenyOd = document.getElementById("f-spm-schvaleny-od").value;
+  const spmSchvalenyDo = document.getElementById("f-spm-schvaleny-do").value;
+  const spmCislo = document.getElementById("f-spm-cislo").value.trim();
+  const ltStatus = document.getElementById("f-lt-status").value;
+  const zakazkaPrazdna = document.getElementById("f-zakazka-prazdna").checked;
+  const zakazka = document.getElementById("f-zakazka").value.trim();
+  if (stav) params.set("stav", stav);
+  if (dopad) params.set("dopad_id", dopad);
+  if (typ) params.set("typ_id", typ);
+  if (medium) params.set("medium_id", medium);
+  if (technik) params.set("technik_id", technik);
+  if (hladat) params.set("hladat", hladat);
+  if (zadanieOd) params.set("zadanie_od", zadanieOd);
+  if (zadanieDo) params.set("zadanie_do", zadanieDo);
+  if (ltOd) params.set("lt_od", ltOd);
+  if (ltDo) params.set("lt_do", ltDo);
+  if (realizaciaOd) params.set("realizacia_od", realizaciaOd);
+  if (realizaciaDo) params.set("realizacia_do", realizaciaDo);
+  if (spmZadanyOd) params.set("spm_zadany_od", spmZadanyOd);
+  if (spmZadanyDo) params.set("spm_zadany_do", spmZadanyDo);
+  if (spmSchvalenyOd) params.set("spm_schvaleny_od", spmSchvalenyOd);
+  if (spmSchvalenyDo) params.set("spm_schvaleny_do", spmSchvalenyDo);
+  if (spmCislo) params.set("spm_cislo", spmCislo);
+  if (ltStatus) params.set("lt_filter", ltStatus);
+  if (zakazkaPrazdna) {
+    params.set("cislo_zakazky_prazdne", "true");
+  } else if (zakazka) {
+    params.set("cislo_zakazky", zakazka);
+  }
+  return params;
+}
+
 async function loadPoruchy() {
   const banner = document.getElementById("quick-filter-banner");
   if (state.quickFilter) {
@@ -822,60 +880,14 @@ async function loadPoruchy() {
     banner.classList.add("hidden");
   }
 
-  const params = new URLSearchParams();
-  if (state.quickFilter) {
-    params.set("rychly", state.quickFilter);
-  } else {
-    const stav = document.getElementById("f-stav").value;
-    const dopad = document.getElementById("f-dopad").value;
-    const typ = document.getElementById("f-typ").value;
-    const medium = document.getElementById("f-medium").value;
-    const technik = document.getElementById("f-technik").value;
-    const hladat = document.getElementById("f-hladat").value.trim();
-    const zadanieOd = document.getElementById("f-zadanie-od").value;
-    const zadanieDo = document.getElementById("f-zadanie-do").value;
-    const ltOd = document.getElementById("f-lt-od").value;
-    const ltDo = document.getElementById("f-lt-do").value;
-    const realizaciaOd = document.getElementById("f-realizacia-od").value;
-    const realizaciaDo = document.getElementById("f-realizacia-do").value;
-    const spmZadanyOd = document.getElementById("f-spm-zadany-od").value;
-    const spmZadanyDo = document.getElementById("f-spm-zadany-do").value;
-    const spmSchvalenyOd = document.getElementById("f-spm-schvaleny-od").value;
-    const spmSchvalenyDo = document.getElementById("f-spm-schvaleny-do").value;
-    const spmCislo = document.getElementById("f-spm-cislo").value.trim();
-    const ltStatus = document.getElementById("f-lt-status").value;
-    const zakazkaPrazdna = document.getElementById("f-zakazka-prazdna").checked;
-    const zakazka = document.getElementById("f-zakazka").value.trim();
-    if (stav) params.set("stav", stav);
-    if (dopad) params.set("dopad_id", dopad);
-    if (typ) params.set("typ_id", typ);
-    if (medium) params.set("medium_id", medium);
-    if (technik) params.set("technik_id", technik);
-    if (hladat) params.set("hladat", hladat);
-    if (zadanieOd) params.set("zadanie_od", zadanieOd);
-    if (zadanieDo) params.set("zadanie_do", zadanieDo);
-    if (ltOd) params.set("lt_od", ltOd);
-    if (ltDo) params.set("lt_do", ltDo);
-    if (realizaciaOd) params.set("realizacia_od", realizaciaOd);
-    if (realizaciaDo) params.set("realizacia_do", realizaciaDo);
-    if (spmZadanyOd) params.set("spm_zadany_od", spmZadanyOd);
-    if (spmZadanyDo) params.set("spm_zadany_do", spmZadanyDo);
-    if (spmSchvalenyOd) params.set("spm_schvaleny_od", spmSchvalenyOd);
-    if (spmSchvalenyDo) params.set("spm_schvaleny_do", spmSchvalenyDo);
-    if (spmCislo) params.set("spm_cislo", spmCislo);
-    if (ltStatus) params.set("lt_filter", ltStatus);
-    if (zakazkaPrazdna) {
-      params.set("cislo_zakazky_prazdne", "true");
-    } else if (zakazka) {
-      params.set("cislo_zakazky", zakazka);
-    }
-  }
+  const params = buildPoruchyParams();
 
   const tbody = document.getElementById("poruchy-tbody");
   tbody.innerHTML = "<tr><td colspan='24'>Načítavam…</td></tr>";
   try {
     const rows = await api("/poruchy?" + params.toString());
     renderPoruchyTable(rows);
+    applyLastSavedHighlight();
   } catch (e) {
     tbody.innerHTML = "<tr><td colspan='24'>Chyba: " + e.message + "</td></tr>";
   }
@@ -888,6 +900,7 @@ function renderPoruchyTable(rows) {
   rows.forEach(r => {
     const tr = document.createElement("tr");
     tr.className = rowStavClass(r);
+    tr.dataset.id = r.id;
     tr.addEventListener("click", () => openPoruchaModal(r.id));
     const popis = r.popis || "", adresa = r.adresa || "", meno = r.meno_subjekt || "", real = r.technici_aktivni || "";
     tr.innerHTML = `
@@ -918,6 +931,19 @@ function renderPoruchyTable(rows) {
     `;
     tbody.appendChild(tr);
   });
+}
+
+// Po uložení poruchy (a znovunačítaní zoznamu) zvýrazní riadok, ktorý sa práve
+// upravoval, a odscrolluje k nemu - inak sa v dlhom zozname stráca, ktorý to bol.
+function applyLastSavedHighlight() {
+  if (!state.lastSavedId) return;
+  const id = state.lastSavedId;
+  state.lastSavedId = null;
+  const tr = document.querySelector(`#poruchy-tbody tr[data-id="${id}"]`);
+  if (!tr) return;
+  tr.classList.add("row-just-saved");
+  tr.scrollIntoView({ block: "center" });
+  setTimeout(() => tr.classList.remove("row-just-saved"), 5000);
 }
 
 function escapeHtml(s) {
@@ -1432,7 +1458,8 @@ document.getElementById("btn-export-excel").addEventListener("click", async (e) 
   btn.disabled = true;
   btn.textContent = "Exportujem…";
   try {
-    const res = await fetch(API_BASE + "/export/excel", {
+    const params = buildPoruchyParams();
+    const res = await fetch(API_BASE + "/export/excel?" + params.toString(), {
       headers: { "Authorization": "Bearer " + state.token },
     });
     if (!res.ok) throw new Error("Export zlyhal (" + res.status + ")");
@@ -1516,6 +1543,7 @@ document.getElementById("modal-save").addEventListener("click", async () => {
       }
       state.pendingPriradenia = [];
     }
+    state.lastSavedId = state.currentPoruchaId;
     document.getElementById("modal-porucha").classList.add("hidden");
     loadPoruchy();
     loadDashboard();
