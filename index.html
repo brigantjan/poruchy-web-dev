@@ -68,6 +68,16 @@
   .filters select,.filters input{font-size:13px;padding:5px 6px;}
   .filter-datum-label{display:flex;flex-direction:column;font-size:11px;color:var(--muted);gap:2px;}
 
+  /* ---------- Stĺpcové filtre (druhý riadok hlavičky tabuľky porúch) ---------- */
+  #poruchy-thead-row th{height:24px;}
+  #poruchy-filter-row th{position:sticky;top:24px;cursor:default;background:#fff;padding:3px 4px;font-weight:400;vertical-align:top;}
+  #poruchy-filter-row .col-filter{width:100%;font-size:10.5px;padding:2px 3px;border-radius:3px;box-sizing:border-box;}
+  .col-filter-datum{display:flex;flex-direction:column;gap:2px;}
+  .col-filter-datum input{width:100%;}
+  .col-filter-zakazka{display:flex;flex-direction:column;gap:2px;}
+  .col-filter-zakazka label{display:flex;align-items:center;gap:3px;font-size:9.5px;color:var(--muted);font-weight:400;white-space:nowrap;}
+  .col-filter-zakazka input[type=checkbox]{width:auto;padding:0;}
+
   /* ---------- Table wrapper ---------- */
   .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 170px);}
   /* Tabuľka porúch nesmie zmršťovať stĺpce na šírku rámu - musí sa dať scrollovať doprava */
@@ -179,7 +189,9 @@
     <section id="view-poruchy" class="view active">
       <div class="view-header">
         <h1>Zoznam porúch</h1>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:240px;">
+          <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
           <button class="btn-secondary" id="btn-export-excel">⬇️ Export do Excelu</button>
           <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
         </div>
@@ -188,48 +200,15 @@
         <span id="quick-filter-text"></span>
         <button class="btn-secondary" id="quick-filter-clear">Zobraziť všetky poruchy</button>
       </div>
-      <div class="filters">
-        <select id="f-stav"><option value="">Stav: všetky</option></select>
-        <select id="f-dopad"><option value="">Dopad: všetky</option></select>
-        <select id="f-typ"><option value="">Typ: všetky</option></select>
-        <select id="f-medium"><option value="">Médium: všetky</option></select>
-        <select id="f-technik"><option value="">Technik: všetci</option></select>
-        <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:260px;">
-        <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
-      </div>
-      <div class="filters" id="f-datumy-row">
-        <label class="filter-datum-label">Zadané od<input type="date" id="f-zadanie-od"></label>
-        <label class="filter-datum-label">Zadané do<input type="date" id="f-zadanie-do"></label>
-        <label class="filter-datum-label">LT do — od<input type="date" id="f-lt-od"></label>
-        <label class="filter-datum-label">LT do — do<input type="date" id="f-lt-do"></label>
-        <label class="filter-datum-label">Realizácia od<input type="date" id="f-realizacia-od"></label>
-        <label class="filter-datum-label">Realizácia do<input type="date" id="f-realizacia-do"></label>
-      </div>
-      <div class="filters" id="f-extra-row">
-        <label class="filter-datum-label">SPM zadaný od<input type="date" id="f-spm-zadany-od"></label>
-        <label class="filter-datum-label">SPM zadaný do<input type="date" id="f-spm-zadany-do"></label>
-        <label class="filter-datum-label">SPM schválený od<input type="date" id="f-spm-schvaleny-od"></label>
-        <label class="filter-datum-label">SPM schválený do<input type="date" id="f-spm-schvaleny-do"></label>
-        <input id="f-spm-cislo" placeholder="SPM č." style="width:100px;">
-        <select id="f-lt-status">
-          <option value="">LT: všetky</option>
-          <option value="do_lt">Do LT</option>
-          <option value="po_lt">Po LT</option>
-        </select>
-        <input id="f-zakazka" placeholder="Zákazka" style="width:120px;">
-        <label class="filter-datum-label" style="flex-direction:row;align-items:center;gap:4px;">
-          <input type="checkbox" id="f-zakazka-prazdna">Bez zákazky
-        </label>
-      </div>
       <div class="table-wrap">
         <table id="poruchy-table">
           <colgroup id="poruchy-colgroup">
-            <col data-col="0" style="width:72px"><col data-col="1" style="width:118px"><col data-col="2" style="width:38px"><col data-col="3" style="width:38px">
-            <col data-col="4" style="width:34px"><col data-col="5" style="width:40px"><col data-col="6" style="width:140px"><col data-col="7" style="width:130px">
-            <col data-col="8" style="width:80px"><col data-col="9" style="width:98px"><col data-col="10" style="width:98px"><col data-col="11" style="width:98px">
-            <col data-col="12" style="width:98px"><col data-col="13" style="width:70px"><col data-col="14" style="width:110px"><col data-col="15" style="width:90px">
-            <col data-col="16" style="width:90px"><col data-col="17" style="width:60px"><col data-col="18" style="width:80px"><col data-col="19" style="width:80px">
-            <col data-col="20" style="width:80px"><col data-col="21" style="width:70px"><col data-col="22" style="width:90px"><col data-col="23" style="width:150px">
+            <col data-col="0" style="width:78px"><col data-col="1" style="width:118px"><col data-col="2" style="width:58px"><col data-col="3" style="width:58px">
+            <col data-col="4" style="width:34px"><col data-col="5" style="width:58px"><col data-col="6" style="width:140px"><col data-col="7" style="width:130px">
+            <col data-col="8" style="width:80px"><col data-col="9" style="width:120px"><col data-col="10" style="width:120px"><col data-col="11" style="width:120px">
+            <col data-col="12" style="width:98px"><col data-col="13" style="width:92px"><col data-col="14" style="width:120px"><col data-col="15" style="width:120px">
+            <col data-col="16" style="width:120px"><col data-col="17" style="width:85px"><col data-col="18" style="width:80px"><col data-col="19" style="width:80px">
+            <col data-col="20" style="width:80px"><col data-col="21" style="width:115px"><col data-col="22" style="width:90px"><col data-col="23" style="width:150px">
           </colgroup>
           <thead>
             <tr id="poruchy-thead-row">
@@ -237,6 +216,68 @@
               <th data-col="6">Popis</th><th data-col="7">Adresa</th><th data-col="8">Meno/Subjekt</th><th data-col="9">Zadané</th><th data-col="10">LT do</th><th data-col="11">Realizácia</th>
               <th data-col="12">Plán</th><th data-col="13">LT (hh:mm)</th><th data-col="14">Realizuje</th><th data-col="15">SPM zadaný</th><th data-col="16">SPM schválený</th><th data-col="17">SPM č.</th><th data-col="18">Cena práce</th><th data-col="19">Cena mat.</th><th data-col="20">Tržba</th>
               <th data-col="21">Zákazka</th><th data-col="22">Faktúra</th><th data-col="23">Poznámka</th>
+            </tr>
+            <tr id="poruchy-filter-row">
+              <th data-col="0"><select id="f-stav" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="1"></th>
+              <th data-col="2"><select id="f-dopad" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="3"><select id="f-typ" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="4"></th>
+              <th data-col="5"><select id="f-medium" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="6"></th>
+              <th data-col="7"></th>
+              <th data-col="8"></th>
+              <th data-col="9">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-zadanie-od" class="col-filter" title="Zadané od">
+                  <input type="date" id="f-zadanie-do" class="col-filter" title="Zadané do">
+                </div>
+              </th>
+              <th data-col="10">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-lt-od" class="col-filter" title="LT do — od">
+                  <input type="date" id="f-lt-do" class="col-filter" title="LT do — do">
+                </div>
+              </th>
+              <th data-col="11">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-realizacia-od" class="col-filter" title="Realizácia od">
+                  <input type="date" id="f-realizacia-do" class="col-filter" title="Realizácia do">
+                </div>
+              </th>
+              <th data-col="12"></th>
+              <th data-col="13">
+                <select id="f-lt-status" class="col-filter">
+                  <option value="">Všetky</option>
+                  <option value="do_lt">Do LT</option>
+                  <option value="po_lt">Po LT</option>
+                </select>
+              </th>
+              <th data-col="14"><select id="f-technik" class="col-filter"><option value="">Všetci</option></select></th>
+              <th data-col="15">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-spm-zadany-od" class="col-filter" title="SPM zadaný od">
+                  <input type="date" id="f-spm-zadany-do" class="col-filter" title="SPM zadaný do">
+                </div>
+              </th>
+              <th data-col="16">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-spm-schvaleny-od" class="col-filter" title="SPM schválený od">
+                  <input type="date" id="f-spm-schvaleny-do" class="col-filter" title="SPM schválený do">
+                </div>
+              </th>
+              <th data-col="17"><input id="f-spm-cislo" class="col-filter" placeholder="SPM č."></th>
+              <th data-col="18"></th>
+              <th data-col="19"></th>
+              <th data-col="20"></th>
+              <th data-col="21">
+                <div class="col-filter-zakazka">
+                  <input id="f-zakazka" class="col-filter" placeholder="Zákazka">
+                  <label><input type="checkbox" id="f-zakazka-prazdna">Bez zákazky</label>
+                </div>
+              </th>
+              <th data-col="22"></th>
+              <th data-col="23"></th>
             </tr>
           </thead>
           <tbody id="poruchy-tbody"></tbody>
@@ -647,11 +688,11 @@ async function loadCiselnikyATechnici() {
   state.ciselniky.media = media;
   state.technici = technici;
 
-  fillSelect("f-dopad", dopady, "id", "nazov", "Dopad: všetky");
-  fillSelect("f-typ", typy, "id", "nazov", "Typ: všetky");
-  fillSelect("f-medium", media, "id", "nazov", "Médium: všetky");
-  fillSelect("f-technik", technici, "id", "meno", "Technik: všetci");
-  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Provizórna","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Stav: všetky");
+  fillSelect("f-dopad", dopady, "id", "nazov", "Všetky");
+  fillSelect("f-typ", typy, "id", "nazov", "Všetky");
+  fillSelect("f-medium", media, "id", "nazov", "Všetky");
+  fillSelect("f-technik", technici, "id", "meno", "Všetci");
+  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Provizórna","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Všetky");
 }
 
 function fillSelect(elId, items, valKey, labelKey, placeholder) {
