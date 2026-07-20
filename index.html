@@ -79,9 +79,11 @@
   .col-filter-zakazka input[type=checkbox]{width:auto;padding:0;}
 
   /* ---------- Table wrapper ---------- */
-  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 170px);}
-  /* Tabuľka porúch nesmie zmršťovať stĺpce na šírku rámu - musí sa dať scrollovať doprava */
-  #poruchy-table{width:max-content;min-width:100%;}
+  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 90px);}
+  /* Tabuľka porúch nesmie zmršťovať stĺpce na šírku rámu - musí sa dať scrollovať doprava.
+     Bez min-width:100% - inak by fixed-layout tabuľka pri zmenšovaní stĺpca späť
+     "naťahovala" jeho šírku, aby vyplnila celý rám, a zmenšenie by nešlo vidieť. */
+  #poruchy-table{width:max-content;}
   /* Farba riadku podľa STAVU poruchy (nie podľa LT) - rovnaká logika ako v DISPECING */
   tr.row-zrealizovana{background:var(--zelena-bg);}
   tr.row-zrealizovana:hover{background:#d4ecd6;}
