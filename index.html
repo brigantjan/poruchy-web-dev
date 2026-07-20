@@ -66,6 +66,7 @@
   /* ---------- Filters ---------- */
   .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;background:#fff;padding:10px;border-radius:6px;border:1px solid var(--border);}
   .filters select,.filters input{font-size:13px;padding:5px 6px;}
+  .filter-datum-label{display:flex;flex-direction:column;font-size:11px;color:var(--muted);gap:2px;}
 
   /* ---------- Table wrapper ---------- */
   .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 170px);}
@@ -193,6 +194,14 @@
         <select id="f-technik"><option value="">Technik: všetci</option></select>
         <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:260px;">
         <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
+      </div>
+      <div class="filters" id="f-datumy-row">
+        <label class="filter-datum-label">Zadané od<input type="date" id="f-zadanie-od"></label>
+        <label class="filter-datum-label">Zadané do<input type="date" id="f-zadanie-do"></label>
+        <label class="filter-datum-label">LT do — od<input type="date" id="f-lt-od"></label>
+        <label class="filter-datum-label">LT do — do<input type="date" id="f-lt-do"></label>
+        <label class="filter-datum-label">Realizácia od<input type="date" id="f-realizacia-od"></label>
+        <label class="filter-datum-label">Realizácia do<input type="date" id="f-realizacia-do"></label>
       </div>
       <div class="table-wrap">
         <table id="poruchy-table">
@@ -585,6 +594,7 @@ document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
 function applyQuickFilter(key) {
   state.quickFilter = key;
   ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
+  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-hladat").value = "";
   document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
   document.querySelector('#sidebar nav button[data-view="poruchy"]').classList.add("active");
@@ -637,7 +647,7 @@ function fillSelect(elId, items, valKey, labelKey, placeholder) {
 // ---------------------------------------------------------------------
 // Zoznam porúch
 // ---------------------------------------------------------------------
-["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => {
+["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => {
   document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; loadPoruchy(); });
 });
 let hladatTimer = null;
@@ -649,6 +659,7 @@ document.getElementById("f-hladat").addEventListener("input", () => {
 document.getElementById("f-reset").addEventListener("click", () => {
   state.quickFilter = null;
   ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
+  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-hladat").value = "";
   loadPoruchy();
 });
@@ -712,12 +723,24 @@ async function loadPoruchy() {
     const medium = document.getElementById("f-medium").value;
     const technik = document.getElementById("f-technik").value;
     const hladat = document.getElementById("f-hladat").value.trim();
+    const zadanieOd = document.getElementById("f-zadanie-od").value;
+    const zadanieDo = document.getElementById("f-zadanie-do").value;
+    const ltOd = document.getElementById("f-lt-od").value;
+    const ltDo = document.getElementById("f-lt-do").value;
+    const realizaciaOd = document.getElementById("f-realizacia-od").value;
+    const realizaciaDo = document.getElementById("f-realizacia-do").value;
     if (stav) params.set("stav", stav);
     if (dopad) params.set("dopad_id", dopad);
     if (typ) params.set("typ_id", typ);
     if (medium) params.set("medium_id", medium);
     if (technik) params.set("technik_id", technik);
     if (hladat) params.set("hladat", hladat);
+    if (zadanieOd) params.set("zadanie_od", zadanieOd);
+    if (zadanieDo) params.set("zadanie_do", zadanieDo);
+    if (ltOd) params.set("lt_od", ltOd);
+    if (ltDo) params.set("lt_do", ltDo);
+    if (realizaciaOd) params.set("realizacia_od", realizaciaOd);
+    if (realizaciaDo) params.set("realizacia_do", realizaciaDo);
   }
 
   const tbody = document.getElementById("poruchy-tbody");
