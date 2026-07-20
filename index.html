@@ -12,7 +12,7 @@
     --cervena:#b71c1c; --cervena-bg:#ffb3b3;
     --siva:#757575; --siva-bg:#f0f0f0;
     --modra:#0d47a1; --modra-bg:#64b5f6;
-    --zlta:#8a6100; --zlta-bg:#ffe066;
+    --zlta:#8a6100; --zlta-bg:#ffeb3b;
     --provizorna:#4d7c0f; --provizorna-bg:#aef73e;
     --sidebar-bg:#0d2b4e; --sidebar-fg:#e4e7eb;
     --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
@@ -70,11 +70,13 @@
 
   /* ---------- Table wrapper ---------- */
   .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 170px);}
+  /* Tabuľka porúch nesmie zmršťovať stĺpce na šírku rámu - musí sa dať scrollovať doprava */
+  #poruchy-table{width:max-content;min-width:100%;}
   /* Farba riadku podľa STAVU poruchy (nie podľa LT) - rovnaká logika ako v DISPECING */
   tr.row-zrealizovana{background:var(--zelena-bg);}
   tr.row-zrealizovana:hover{background:#d4ecd6;}
   tr.row-stornovana{background:var(--zlta-bg);}
-  tr.row-stornovana:hover{background:#fdf6cf;}
+  tr.row-stornovana:hover{background:#fff59d;}
   tr.row-zaparkovana{background:var(--modra-bg);}
   tr.row-zaparkovana:hover{background:#bbdefb;}
   tr.row-otvorena{background:#fff;}
@@ -203,6 +205,22 @@
         <label class="filter-datum-label">Realizácia od<input type="date" id="f-realizacia-od"></label>
         <label class="filter-datum-label">Realizácia do<input type="date" id="f-realizacia-do"></label>
       </div>
+      <div class="filters" id="f-extra-row">
+        <label class="filter-datum-label">SPM zadaný od<input type="date" id="f-spm-zadany-od"></label>
+        <label class="filter-datum-label">SPM zadaný do<input type="date" id="f-spm-zadany-do"></label>
+        <label class="filter-datum-label">SPM schválený od<input type="date" id="f-spm-schvaleny-od"></label>
+        <label class="filter-datum-label">SPM schválený do<input type="date" id="f-spm-schvaleny-do"></label>
+        <input id="f-spm-cislo" placeholder="SPM č." style="width:100px;">
+        <select id="f-lt-status">
+          <option value="">LT: všetky</option>
+          <option value="do_lt">Do LT</option>
+          <option value="po_lt">Po LT</option>
+        </select>
+        <input id="f-zakazka" placeholder="Zákazka" style="width:120px;">
+        <label class="filter-datum-label" style="flex-direction:row;align-items:center;gap:4px;">
+          <input type="checkbox" id="f-zakazka-prazdna">Bez zákazky
+        </label>
+      </div>
       <div class="table-wrap">
         <table id="poruchy-table">
           <colgroup id="poruchy-colgroup">
@@ -217,7 +235,7 @@
             <tr id="poruchy-thead-row">
               <th data-col="0">Stav</th><th data-col="1">ID</th><th data-col="2">Dopad</th><th data-col="3">Typ</th><th data-col="4">Sieť</th><th data-col="5">Médium</th>
               <th data-col="6">Popis</th><th data-col="7">Adresa</th><th data-col="8">Meno/Subjekt</th><th data-col="9">Zadané</th><th data-col="10">LT do</th><th data-col="11">Realizácia</th>
-              <th data-col="12">Plán</th><th data-col="13">LT (hod.)</th><th data-col="14">Realizuje</th><th data-col="15">SPM zadaný</th><th data-col="16">SPM schválený</th><th data-col="17">SPM č.</th><th data-col="18">Cena práce</th><th data-col="19">Cena mat.</th><th data-col="20">Tržba</th>
+              <th data-col="12">Plán</th><th data-col="13">LT (hh:mm)</th><th data-col="14">Realizuje</th><th data-col="15">SPM zadaný</th><th data-col="16">SPM schválený</th><th data-col="17">SPM č.</th><th data-col="18">Cena práce</th><th data-col="19">Cena mat.</th><th data-col="20">Tržba</th>
               <th data-col="21">Zákazka</th><th data-col="22">Faktúra</th><th data-col="23">Poznámka</th>
             </tr>
           </thead>
@@ -480,14 +498,19 @@ function fmtMoney(v) {
   return Number(v).toLocaleString("sk-SK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 function ltHoursCell(r) {
-  // Číselné hodiny do/po LT (počítané na backende ako do_po_lt_hod).
-  // Zelená = ešte v termíne (kladné číslo), červená = po termíne (záporné).
+  // Čas do/po LT v tvare hh:mm (počítané na backende ako do_po_lt_hod, v hodinách).
+  // Zelená = ešte v termíne, červená (so znamienkom mínus) = po termíne.
   // Pri Zrealizovaná/Stornovaná je hodnota zamrznutá k dátumu realizácie,
   // pri ostatných stavoch sa prepočítava voči aktuálnemu času (živo).
   const h = r.do_po_lt_hod;
   if (h === null || h === undefined) return `<span class="badge">—</span>`;
+  const sign = h < 0 ? "-" : "";
+  const totalMinutes = Math.round(Math.abs(h) * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  const pad = n => String(n).padStart(2, "0");
   const cls = h < 0 ? "cervena" : "zelena";
-  return `<span class="badge badge-${cls}">${h} h</span>`;
+  return `<span class="badge badge-${cls}">${sign}${hh}:${pad(mm)}</span>`;
 }
 
 // ---------------------------------------------------------------------
@@ -593,8 +616,12 @@ document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
 
 function applyQuickFilter(key) {
   state.quickFilter = key;
-  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
-  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => document.getElementById(id).value = "");
+  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"].forEach(id => document.getElementById(id).value = "");
+  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do",
+    "f-spm-zadany-od", "f-spm-zadany-do", "f-spm-schvaleny-od", "f-spm-schvaleny-do"].forEach(id => document.getElementById(id).value = "");
+  ["f-spm-cislo", "f-zakazka"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-zakazka-prazdna").checked = false;
+  document.getElementById("f-zakazka").disabled = false;
   document.getElementById("f-hladat").value = "";
   document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
   document.querySelector('#sidebar nav button[data-view="poruchy"]').classList.add("active");
@@ -647,8 +674,18 @@ function fillSelect(elId, items, valKey, labelKey, placeholder) {
 // ---------------------------------------------------------------------
 // Zoznam porúch
 // ---------------------------------------------------------------------
-["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => {
+const F_DATUM_IDS = ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do",
+  "f-spm-zadany-od", "f-spm-zadany-do", "f-spm-schvaleny-od", "f-spm-schvaleny-do"];
+const F_TEXT_IDS = ["f-spm-cislo", "f-zakazka"];
+const F_SELECT_IDS = ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"];
+
+[...F_SELECT_IDS, ...F_DATUM_IDS].forEach(id => {
   document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; loadPoruchy(); });
+});
+document.getElementById("f-zakazka-prazdna").addEventListener("change", () => {
+  document.getElementById("f-zakazka").disabled = document.getElementById("f-zakazka-prazdna").checked;
+  state.quickFilter = null;
+  loadPoruchy();
 });
 let hladatTimer = null;
 document.getElementById("f-hladat").addEventListener("input", () => {
@@ -656,11 +693,22 @@ document.getElementById("f-hladat").addEventListener("input", () => {
   clearTimeout(hladatTimer);
   hladatTimer = setTimeout(loadPoruchy, 350);
 });
+let textFilterTimer = null;
+F_TEXT_IDS.forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    state.quickFilter = null;
+    clearTimeout(textFilterTimer);
+    textFilterTimer = setTimeout(loadPoruchy, 350);
+  });
+});
 document.getElementById("f-reset").addEventListener("click", () => {
   state.quickFilter = null;
-  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik"].forEach(id => document.getElementById(id).value = "");
-  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do"].forEach(id => document.getElementById(id).value = "");
+  F_SELECT_IDS.forEach(id => document.getElementById(id).value = "");
+  F_DATUM_IDS.forEach(id => document.getElementById(id).value = "");
+  F_TEXT_IDS.forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-hladat").value = "";
+  document.getElementById("f-zakazka-prazdna").checked = false;
+  document.getElementById("f-zakazka").disabled = false;
   loadPoruchy();
 });
 
@@ -729,6 +777,14 @@ async function loadPoruchy() {
     const ltDo = document.getElementById("f-lt-do").value;
     const realizaciaOd = document.getElementById("f-realizacia-od").value;
     const realizaciaDo = document.getElementById("f-realizacia-do").value;
+    const spmZadanyOd = document.getElementById("f-spm-zadany-od").value;
+    const spmZadanyDo = document.getElementById("f-spm-zadany-do").value;
+    const spmSchvalenyOd = document.getElementById("f-spm-schvaleny-od").value;
+    const spmSchvalenyDo = document.getElementById("f-spm-schvaleny-do").value;
+    const spmCislo = document.getElementById("f-spm-cislo").value.trim();
+    const ltStatus = document.getElementById("f-lt-status").value;
+    const zakazkaPrazdna = document.getElementById("f-zakazka-prazdna").checked;
+    const zakazka = document.getElementById("f-zakazka").value.trim();
     if (stav) params.set("stav", stav);
     if (dopad) params.set("dopad_id", dopad);
     if (typ) params.set("typ_id", typ);
@@ -741,6 +797,17 @@ async function loadPoruchy() {
     if (ltDo) params.set("lt_do", ltDo);
     if (realizaciaOd) params.set("realizacia_od", realizaciaOd);
     if (realizaciaDo) params.set("realizacia_do", realizaciaDo);
+    if (spmZadanyOd) params.set("spm_zadany_od", spmZadanyOd);
+    if (spmZadanyDo) params.set("spm_zadany_do", spmZadanyDo);
+    if (spmSchvalenyOd) params.set("spm_schvaleny_od", spmSchvalenyOd);
+    if (spmSchvalenyDo) params.set("spm_schvaleny_do", spmSchvalenyDo);
+    if (spmCislo) params.set("spm_cislo", spmCislo);
+    if (ltStatus) params.set("lt_filter", ltStatus);
+    if (zakazkaPrazdna) {
+      params.set("cislo_zakazky_prazdne", "true");
+    } else if (zakazka) {
+      params.set("cislo_zakazky", zakazka);
+    }
   }
 
   const tbody = document.getElementById("poruchy-tbody");
