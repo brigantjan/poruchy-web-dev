@@ -14,7 +14,7 @@
     --modra:#0d47a1; --modra-bg:#64b5f6;
     --zlta:#8a6100; --zlta-bg:#ffe066;
     --provizorna:#4d7c0f; --provizorna-bg:#aef73e;
-    --sidebar-bg:#1f2933; --sidebar-fg:#e4e7eb;
+    --sidebar-bg:#0d2b4e; --sidebar-fg:#e4e7eb;
     --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
     --accent:#2563eb;
   }
@@ -41,17 +41,17 @@
   /* ---------- App shell ---------- */
   #app{display:flex;height:100vh;}
   #sidebar{width:160px;background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;flex-shrink:0;}
-  #sidebar h2{padding:12px 10px;margin:0;font-size:14px;border-bottom:1px solid #37414c;}
-  #sidebar .stats{padding:10px 10px 0;font-size:11.5px;border-bottom:1px solid #37414c;}
-  #sidebar .stats div{display:flex;justify-content:space-between;gap:4px;padding:6px 4px;border-bottom:1px solid #37414c;}
-  #sidebar .stats div:last-child{border-bottom:none;}
-  #sidebar .stats div.stat-clickable{cursor:pointer;border-radius:3px;}
-  #sidebar .stats div.stat-clickable:hover{background:#37414c;}
+  #sidebar h2{padding:12px 10px;margin:0;font-size:14px;border-bottom:1px solid #1c4a7f;}
+  #sidebar .stats{padding:10px 10px 0;font-size:11.5px;border-bottom:1px solid #1c4a7f;}
+  #sidebar .stats div{display:flex;justify-content:space-between;gap:4px;padding:6px 4px;border:1px solid #fff;border-radius:3px;margin-bottom:4px;}
+  #sidebar .stats div:last-child{margin-bottom:0;}
+  #sidebar .stats div.stat-clickable{cursor:pointer;}
+  #sidebar .stats div.stat-clickable:hover{background:rgba(255,255,255,.15);}
   #quick-filter-banner{background:var(--oranzova-bg);color:var(--oranzova);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;}
   #sidebar nav{flex:1;padding:8px 0;}
   #sidebar nav button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--sidebar-fg);padding:9px 10px;font-size:12.5px;}
-  #sidebar nav button:hover,#sidebar nav button.active{background:#37414c;}
-  #sidebar .userbox{padding:10px;border-top:1px solid #37414c;font-size:11px;color:#9aa5b1;}
+  #sidebar nav button:hover,#sidebar nav button.active{background:#1c4a7f;}
+  #sidebar .userbox{padding:10px;border-top:1px solid #1c4a7f;font-size:11px;color:#9aa5b1;}
   #sidebar .userbox button{margin-top:6px;background:none;border:1px solid #556070;color:var(--sidebar-fg);padding:4px 8px;border-radius:4px;font-size:11px;}
 
   #content{flex:1;overflow:auto;padding:14px;min-width:0;}
@@ -1323,7 +1323,7 @@ document.getElementById("modal-save").addEventListener("click", async () => {
 
   const stavEl = document.getElementById("pf-stav");
   const realEl = document.getElementById("pf-datum_realizacie");
-  if ((stavEl.value === "Zrealizovaná" || stavEl.value === "Stornovaná") && !realEl.value) {
+  if ((stavEl.value === "Zrealizovaná" || stavEl.value === "Stornovaná" || stavEl.value === "Provizórna") && !realEl.value) {
     alert(`Stav '${stavEl.value}' vyžaduje vyplnený dátum realizácie.`);
     return;
   }
