@@ -11,8 +11,9 @@
     --oranzova:#ef6c00; --oranzova-bg:#fff3e0;
     --cervena:#b71c1c; --cervena-bg:#ffb3b3;
     --siva:#757575; --siva-bg:#f0f0f0;
-    --modra:#1565c0; --modra-bg:#e3f2fd;
+    --modra:#0d47a1; --modra-bg:#64b5f6;
     --zlta:#8a6100; --zlta-bg:#ffe066;
+    --provizorna:#4d7c0f; --provizorna-bg:#aef73e;
     --sidebar-bg:#1f2933; --sidebar-fg:#e4e7eb;
     --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
     --accent:#2563eb;
@@ -41,9 +42,10 @@
   #app{display:flex;height:100vh;}
   #sidebar{width:160px;background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;flex-shrink:0;}
   #sidebar h2{padding:12px 10px;margin:0;font-size:14px;border-bottom:1px solid #37414c;}
-  #sidebar .stats{padding:10px;font-size:11.5px;border-bottom:1px solid #37414c;}
-  #sidebar .stats div{display:flex;justify-content:space-between;margin-bottom:6px;gap:4px;}
-  #sidebar .stats div.stat-clickable{cursor:pointer;border-radius:3px;padding:2px 4px;margin:-2px -4px 4px;}
+  #sidebar .stats{padding:10px 10px 0;font-size:11.5px;border-bottom:1px solid #37414c;}
+  #sidebar .stats div{display:flex;justify-content:space-between;gap:4px;padding:6px 4px;border-bottom:1px solid #37414c;}
+  #sidebar .stats div:last-child{border-bottom:none;}
+  #sidebar .stats div.stat-clickable{cursor:pointer;border-radius:3px;}
   #sidebar .stats div.stat-clickable:hover{background:#37414c;}
   #quick-filter-banner{background:var(--oranzova-bg);color:var(--oranzova);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;}
   #sidebar nav{flex:1;padding:8px 0;}
@@ -73,10 +75,12 @@
   tr.row-stornovana{background:var(--zlta-bg);}
   tr.row-stornovana:hover{background:#fdf6cf;}
   tr.row-zaparkovana{background:var(--modra-bg);}
-  tr.row-zaparkovana:hover{background:#cfe6fb;}
+  tr.row-zaparkovana:hover{background:#bbdefb;}
   tr.row-otvorena{background:#fff;}
   tr.row-nenaplanovana{background:var(--cervena-bg);}
   tr.row-nenaplanovana:hover{background:#ff9999;}
+  tr.row-provizorna{background:var(--provizorna-bg);}
+  tr.row-provizorna:hover{background:#d4ffa0;}
   .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;}
   .badge-zelena{background:var(--zelena-bg);color:var(--zelena);}
   .badge-oranzova{background:var(--oranzova-bg);color:var(--oranzova);}
@@ -151,7 +155,7 @@
       <div data-stat-row="nenaplanovane"><span>Nenaplánované 🔴</span><b id="stat-nenaplanovane">–</b></div>
       <div data-stat-row="espm_nezadane"><span>Nezadané ESPM</span><b id="stat-espm-nezadane">–</b></div>
       <div data-stat-row="espm_neschvalene"><span>Neschválené ESPM</span><b id="stat-espm-neschvalene">–</b></div>
-      <div><span>Tržba (mesiac)</span><b id="stat-trzba">–</b></div>
+      <div data-stat-row="provizorne"><span>Provizórne 💚</span><b id="stat-provizorne">–</b></div>
     </div>
     <nav>
       <button data-view="poruchy" class="active">📋 Zoznam porúch</button>
@@ -172,7 +176,10 @@
     <section id="view-poruchy" class="view active">
       <div class="view-header">
         <h1>Zoznam porúch</h1>
-        <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" id="btn-export-excel">⬇️ Export do Excelu</button>
+          <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
+        </div>
       </div>
       <div id="quick-filter-banner" class="hidden">
         <span id="quick-filter-text"></span>
@@ -304,6 +311,7 @@
       <label>Stav<select id="pf-stav">
         <option value="Otvorená">Otvorená</option>
         <option value="Zrealizovaná">Zrealizovaná</option>
+        <option value="Provizórna">Provizórna</option>
         <option value="Stornovaná">Stornovaná</option>
         <option value="Zaparkovaná">Zaparkovaná</option>
       </select></label>
@@ -385,6 +393,7 @@ const QUICK_FILTER_LABELS = {
   nenaplanovane: "Nenaplánované 🔴",
   espm_nezadane: "Nezadané ESPM",
   espm_neschvalene: "Neschválené ESPM",
+  provizorne: "Provizórne 💚",
 };
 
 function saveAuth() {
@@ -451,6 +460,7 @@ function rowStavClass(r) {
   if (r.stav === "Otvorená" && !r.planovany_datum) return "row-nenaplanovana";
   return {
     "Zrealizovaná": "row-zrealizovana",
+    "Provizórna": "row-provizorna",
     "Stornovaná": "row-stornovana",
     "Zaparkovaná": "row-zaparkovana",
     "Otvorená": "row-otvorena",
@@ -546,7 +556,7 @@ async function loadDashboard() {
     document.getElementById("stat-nenaplanovane").textContent = d.nenaplanovane ?? 0;
     document.getElementById("stat-espm-nezadane").textContent = d.espm_nezadane ?? 0;
     document.getElementById("stat-espm-neschvalene").textContent = d.espm_neschvalene ?? 0;
-    document.getElementById("stat-trzba").textContent = fmtMoney(d.trzba_mesiac || 0);
+    document.getElementById("stat-provizorne").textContent = d.provizorne ?? 0;
 
     state.dashboardCounts = {
       otvorene: d.otvorene ?? 0,
@@ -555,6 +565,7 @@ async function loadDashboard() {
       nenaplanovane: d.nenaplanovane ?? 0,
       espm_nezadane: d.espm_nezadane ?? 0,
       espm_neschvalene: d.espm_neschvalene ?? 0,
+      provizorne: d.provizorne ?? 0,
     };
     document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
       const key = row.dataset.statRow;
@@ -603,7 +614,7 @@ async function loadCiselnikyATechnici() {
   fillSelect("f-typ", typy, "id", "nazov", "Typ: všetky");
   fillSelect("f-medium", media, "id", "nazov", "Médium: všetky");
   fillSelect("f-technik", technici, "id", "meno", "Technik: všetci");
-  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Stav: všetky");
+  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Provizórna","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Stav: všetky");
 }
 
 function fillSelect(elId, items, valKey, labelKey, placeholder) {
@@ -1009,7 +1020,7 @@ function handleStavChange() {
     realEl.value = "";
     realEl.disabled = true;
     warnBox.classList.add("hidden");
-  } else if (stav === "Zrealizovaná" || stav === "Stornovaná") {
+  } else if (stav === "Zrealizovaná" || stav === "Stornovaná" || stav === "Provizórna") {
     realEl.disabled = false;
     if (!realEl.value) {
       warnBox.textContent = `Stav '${stav}' vyžaduje vyplnený dátum realizácie — bez neho sa porucha neuloží.`;
@@ -1263,6 +1274,36 @@ document.getElementById("pf-externe_id").addEventListener("input", (e) => {
 });
 
 document.getElementById("btn-nova-porucha").addEventListener("click", () => openPoruchaModal(null));
+
+document.getElementById("btn-export-excel").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  const pôvodnýText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Exportujem…";
+  try {
+    const res = await fetch(API_BASE + "/export/excel", {
+      headers: { "Authorization": "Bearer " + state.token },
+    });
+    if (!res.ok) throw new Error("Export zlyhal (" + res.status + ")");
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : "poruchy_export.xlsx";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Export sa nepodarilo stiahnuť: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = pôvodnýText;
+  }
+});
 
 document.getElementById("modal-delete").addEventListener("click", async () => {
   if (!state.currentPoruchaId) return;
