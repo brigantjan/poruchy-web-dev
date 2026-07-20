@@ -755,6 +755,22 @@ document.getElementById("f-reset").addEventListener("click", () => {
   loadPoruchy();
 });
 
+// Tabuľka musí mať EXPLICITNÚ šírku v px (súčet šírok všetkých stĺpcov), nie CSS
+// "width:max-content" - to totiž pri table-layout:fixed necháva prehliadaču priestor
+// interpretovať širku podľa OBSAHU buniek, takže široké texty (Popis/Adresa/Meno...)
+// sa nedali zúžiť pod ich prirodzenú šírku. S explicitným px súčtom je šírka stĺpca
+// vždy presne to, čo nastaví posuvník - zmenšenie aj zväčšenie.
+function updateTableWidth() {
+  const table = document.getElementById("poruchy-table");
+  const cols = document.querySelectorAll("#poruchy-colgroup col");
+  let total = 0;
+  cols.forEach(c => {
+    const w = parseInt(c.style.width || getComputedStyle(c).width, 10);
+    total += isNaN(w) ? 90 : w;
+  });
+  table.style.width = total + "px";
+}
+
 function initColumnResize() {
   const STORAGE_KEY = "poruchy_col_widths";
   let saved = {};
@@ -777,8 +793,9 @@ function initColumnResize() {
       const startWidth = col.getBoundingClientRect().width;
       handle.classList.add("resizing");
       function onMove(ev) {
-        const newWidth = Math.max(30, Math.round(startWidth + (ev.clientX - startX)));
+        const newWidth = Math.max(20, Math.round(startWidth + (ev.clientX - startX)));
         col.style.width = newWidth + "px";
+        updateTableWidth();
       }
       function onUp() {
         handle.classList.remove("resizing");
@@ -791,6 +808,7 @@ function initColumnResize() {
       document.addEventListener("mouseup", onUp);
     });
   });
+  updateTableWidth();
 }
 initColumnResize();
 
