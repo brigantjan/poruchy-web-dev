@@ -147,9 +147,9 @@
   .vytazenost-3day th{background:#eef1f4;font-weight:600;}
   .vytazenost-3day td.vt-tech{text-align:left;font-weight:600;background:#fff;}
   .vt-num{display:inline-block;min-width:18px;padding:1px 6px;margin:1px;border-radius:9px;font-weight:700;cursor:default;text-align:center;}
-  .vt-zelena{background:var(--zelena);color:#fff;}
-  .vt-zlta{background:var(--zlta);color:#fff;}
-  .vt-cierna{background:#37474f;color:#fff;}
+  .vt-zelena{background:#43a047;color:#fff;}
+  .vt-zlta{background:#fbc02d;color:#3d3200;}
+  .vt-cierna{background:#607d8b;color:#fff;}
   .vt-none{color:var(--muted);font-weight:400;background:none;padding:0;}
 
   .card-list{display:flex;flex-direction:column;gap:8px;}
@@ -1342,8 +1342,10 @@ function handleStavChange() {
 }
 
 function relevantVytazenostDate() {
-  const planEl = document.getElementById("pf-planovany_datum");
-  return planEl && planEl.value ? planEl.value.slice(0, 10) : todayStr();
+  // Vyťaženosť sa má vždy zobrazovať od dnešného dňa (dnes + 2 nasledujúce dni),
+  // bez ohľadu na plánovaný dátum editovanej poruchy - Ján potrebuje vidieť
+  // aktuálnu voľnú kapacitu technikov, nie kapacitu okolo dátumu plánu.
+  return todayStr();
 }
 
 function renderTechnikCheckboxes() {
