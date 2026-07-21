@@ -131,6 +131,13 @@
 
   .stav-warning{background:var(--cervena-bg);color:var(--cervena);border-radius:4px;padding:8px 10px;font-size:13px;margin-top:8px;}
 
+  .spm-blok{max-width:480px;}
+  .spm-blok-row{display:flex;align-items:flex-end;gap:14px;margin-bottom:8px;}
+  .spm-blok-row:last-child{margin-bottom:0;}
+  .spm-label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;flex:1;}
+  .spm-checkbox{flex-shrink:0;white-space:nowrap;padding-bottom:6px;font-size:12.5px;}
+  .cislo-zakazky-prazdne{background:#fff3e0;border-color:#f0a94a;}
+
   .technik-checkboxes{display:flex;flex-wrap:wrap;gap:10px;background:#f7f8fa;border-radius:4px;padding:8px;}
   .technik-checkboxes label{flex-direction:row!important;align-items:center;gap:4px;font-size:13px;color:var(--text);}
   .priradenie-add-box{background:#fbfbfc;border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:6px;}
@@ -138,15 +145,26 @@
   .vytazenost-3day{border-collapse:collapse;margin-top:6px;font-size:11.5px;}
   .vytazenost-3day th,.vytazenost-3day td{border:1px solid var(--border);padding:3px 6px;text-align:center;}
   .vytazenost-3day th{background:#eef1f4;font-weight:600;}
-  .vytazenost-3day td.vt-0{background:var(--zelena-bg);}
-  .vytazenost-3day td.vt-1{background:var(--oranzova-bg);}
-  .vytazenost-3day td.vt-2{background:var(--cervena-bg);}
   .vytazenost-3day td.vt-tech{text-align:left;font-weight:600;background:#fff;}
+  .vt-num{display:inline-block;padding:0 3px;font-weight:700;cursor:default;}
+  .vt-zelena{color:var(--zelena);}
+  .vt-zlta{color:var(--zlta);}
+  .vt-cierna{color:var(--text);}
+  .vt-none{color:var(--muted);font-weight:400;}
 
   .card-list{display:flex;flex-direction:column;gap:8px;}
   .card-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
   .card-item.inactive{opacity:.5;}
   .add-row{display:flex;gap:8px;margin-bottom:14px;}
+
+  .poznamka-add-box{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;background:#fff;padding:12px;border-radius:6px;border:1px solid var(--border);}
+  .poznamka-add-box textarea{font-family:inherit;font-size:13px;resize:vertical;}
+  .poznamka-item{background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .poznamka-item .pz-text{white-space:pre-wrap;flex:1;}
+  .poznamka-item .pz-termin{font-size:12px;color:var(--muted);margin-top:3px;}
+  .poznamka-item .pz-actions{display:flex;gap:6px;flex-shrink:0;}
+  .poznamka-edit-box{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .poznamka-edit-box .pz-edit-dates{display:flex;gap:10px;}
   .hidden{display:none!important;}
 </style>
 </head>
@@ -173,11 +191,13 @@
       <div data-stat-row="espm_nezadane"><span>Nezadané ESPM</span><b id="stat-espm-nezadane">–</b></div>
       <div data-stat-row="espm_neschvalene"><span>Neschválené ESPM</span><b id="stat-espm-neschvalene">–</b></div>
       <div data-stat-row="provizorne"><span>Provizórne 💚</span><b id="stat-provizorne">–</b></div>
+      <div data-stat-row="poznamky"><span>Poznámky 📝</span><b id="stat-poznamky">–</b></div>
     </div>
     <nav>
       <button data-view="poruchy" class="active">📋 Zoznam porúch</button>
       <button data-view="prehlad">💰 Prehľad</button>
       <button data-view="technici">👷 Technici</button>
+      <button data-view="poznamky">📝 Poznámky</button>
       <button data-view="nastavenia">⚙️ Nastavenia</button>
       <button data-view="pouzivatelia" data-role="admin">👤 Používatelia</button>
     </nav>
@@ -322,6 +342,18 @@
       <div class="card-list" id="technici-list"></div>
     </section>
 
+    <!-- ===== Poznámky ===== -->
+    <section id="view-poznamky" class="view">
+      <div class="view-header"><h1>Poznámky</h1></div>
+      <div class="poznamka-add-box">
+        <textarea id="pz-text" rows="2" placeholder="Nová poznámka…" style="flex:1;"></textarea>
+        <label class="filter-datum-label">Termín od<input type="date" id="pz-termin-od"></label>
+        <label class="filter-datum-label">Termín do<input type="date" id="pz-termin-do"></label>
+        <button class="btn-primary" id="pz-add">Pridať</button>
+      </div>
+      <div class="card-list" id="poznamky-list"></div>
+    </section>
+
     <!-- ===== Nastavenia ===== -->
     <section id="view-nastavenia" class="view">
       <div class="view-header"><h1>Nastavenia — číselníky</h1></div>
@@ -399,6 +431,41 @@
     </div>
 
     <div class="form-grid" id="porucha-form"></div>
+
+    <div class="section-title">SPM / ceny / faktúra</div>
+    <div class="spm-blok" id="spm-blok">
+      <div class="spm-blok-row">
+        <label class="spm-label">SPM zadaný<input type="date" id="pf-spm_zadany"></label>
+        <label class="checkbox-row spm-checkbox"><input type="checkbox" id="pf-spm_zadany_neuctuje_sa"> Neúčtuje sa</label>
+      </div>
+      <div class="spm-blok-row">
+        <label class="spm-label">SPM schválený<input type="date" id="pf-spm_schvaleny"></label>
+        <label class="checkbox-row spm-checkbox"><input type="checkbox" id="pf-spm_schvaleny_neuctuje_sa"> Neúčtuje sa</label>
+      </div>
+      <div class="spm-blok-row">
+        <label class="spm-label">SPM číslo<input type="text" id="pf-spm_cislo"></label>
+        <label class="checkbox-row spm-checkbox"><input type="checkbox" id="pf-spm_cislo_neuctuje_sa" disabled title="Odvodené automaticky od SPM zadaný"> Neúčtuje sa</label>
+      </div>
+      <div class="spm-blok-row">
+        <label class="spm-label">Cena práce (€)<input type="number" step="0.01" id="pf-cena_prace"></label>
+        <label class="checkbox-row spm-checkbox"><input type="checkbox" id="pf-cena_prace_neuctuje_sa"> Neúčtuje sa</label>
+      </div>
+      <div class="spm-blok-row">
+        <label class="spm-label">Cena materiálu (€)<input type="number" step="0.01" id="pf-cena_materialu"></label>
+        <label class="checkbox-row spm-checkbox"><input type="checkbox" id="pf-cena_materialu_neuctuje_sa"> Neúčtuje sa</label>
+      </div>
+      <div class="spm-blok-row">
+        <label class="spm-label">Faktúra
+          <select id="pf-faktura_stav">
+            <option value="">–</option>
+            <option value="Pripravená">Pripravená</option>
+            <option value="Odoslaná">Odoslaná</option>
+            <option value="Neúčtuje sa">Neúčtuje sa</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
     <div id="stav-warning" class="stav-warning hidden"></div>
 
     <div class="section-title">Priradenia technikov</div>
@@ -617,6 +684,7 @@ document.querySelectorAll("#sidebar nav button").forEach(btn => {
     document.getElementById("view-" + btn.dataset.view).classList.add("active");
     if (btn.dataset.view === "prehlad") loadPrehlad();
     if (btn.dataset.view === "technici") loadTechniciView();
+    if (btn.dataset.view === "poznamky") loadPoznamkyView();
     if (btn.dataset.view === "nastavenia") loadNastaveniaView();
     if (btn.dataset.view === "pouzivatelia") loadPouzivateliaView();
   });
@@ -635,6 +703,7 @@ async function loadDashboard() {
     document.getElementById("stat-espm-nezadane").textContent = d.espm_nezadane ?? 0;
     document.getElementById("stat-espm-neschvalene").textContent = d.espm_neschvalene ?? 0;
     document.getElementById("stat-provizorne").textContent = d.provizorne ?? 0;
+    document.getElementById("stat-poznamky").textContent = d.poznamky ?? 0;
 
     state.dashboardCounts = {
       otvorene: d.otvorene ?? 0,
@@ -644,6 +713,7 @@ async function loadDashboard() {
       espm_nezadane: d.espm_nezadane ?? 0,
       espm_neschvalene: d.espm_neschvalene ?? 0,
       provizorne: d.provizorne ?? 0,
+      poznamky: d.poznamky ?? 0,
     };
     document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
       const key = row.dataset.statRow;
@@ -656,6 +726,10 @@ document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
   row.addEventListener("click", () => {
     const key = row.dataset.statRow;
     if (!(state.dashboardCounts[key] > 0)) return;
+    if (key === "poznamky") {
+      document.querySelector('#sidebar nav button[data-view="poznamky"]').click();
+      return;
+    }
     applyQuickFilter(key);
   });
 });
@@ -981,6 +1055,15 @@ const PORUCHA_FIELDS = [
   { key: "poznamka", label: "Poznámka", type: "text-list", full: true },
 ];
 
+// Tieto polia sa nerenderujú do všeobecnej mriežky (#porucha-form) - majú vlastný
+// statický blok (#spm-blok) v HTML. Zoznam PORUCHA_FIELDS ich napriek tomu musí
+// obsahovať, lebo z neho čerpá logika ukladania (modal-save) aj populácie hodnôt.
+const SPM_BLOCK_KEYS = new Set([
+  "spm_zadany", "spm_zadany_neuctuje_sa", "spm_schvaleny", "spm_schvaleny_neuctuje_sa",
+  "spm_cislo", "cena_prace", "cena_prace_neuctuje_sa", "cena_materialu",
+  "cena_materialu_neuctuje_sa", "faktura_stav",
+]);
+
 let popisHistory = [];
 
 function inputHtmlFor(f, value) {
@@ -1068,12 +1151,30 @@ async function openPoruchaModal(id) {
     Array.from(document.querySelectorAll("#poruchy-tbody tr td:nth-child(7)")).map(td => td.textContent).filter(Boolean)
   ));
 
-  form.innerHTML = PORUCHA_FIELDS.map(f => inputHtmlFor(f, data[f.key])).join("");
+  form.innerHTML = PORUCHA_FIELDS.filter(f => !SPM_BLOCK_KEYS.has(f.key)).map(f => inputHtmlFor(f, data[f.key])).join("");
 
   // Stav + Externé ID sú statické polia mimo dynamického form-grid (kvôli pozícii hore)
   document.getElementById("pf-stav").value = data.stav || "Otvorená";
   document.getElementById("pf-externe_id").value = data.externe_id || "";
   document.getElementById("dup-warning").classList.add("hidden");
+
+  // SPM/cena/faktúra blok - tiež statický (mimo dynamického form-grid), hodnoty
+  // sa musia vyplniť ručne pri každom otvorení modalu.
+  setDateVal("pf-spm_zadany", data.spm_zadany);
+  setCheckVal("pf-spm_zadany_neuctuje_sa", data.spm_zadany_neuctuje_sa);
+  setDateVal("pf-spm_schvaleny", data.spm_schvaleny);
+  setCheckVal("pf-spm_schvaleny_neuctuje_sa", data.spm_schvaleny_neuctuje_sa);
+  setTextVal("pf-spm_cislo", data.spm_cislo);
+  setNumVal("pf-cena_prace", data.cena_prace);
+  setCheckVal("pf-cena_prace_neuctuje_sa", data.cena_prace_neuctuje_sa);
+  setNumVal("pf-cena_materialu", data.cena_materialu);
+  setCheckVal("pf-cena_materialu_neuctuje_sa", data.cena_materialu_neuctuje_sa);
+  document.getElementById("pf-faktura_stav").value = data.faktura_stav || "";
+  updateSpmCisloIndicator();
+
+  // Číslo zákazky - zvýraznenie kým je prázdne, nech sa na neho nezabudne
+  // (samotná hodnota sa už vyplnila v rámci form.innerHTML vyššie)
+  updateCisloZakazkyHighlight();
 
   // stav <-> dátum realizácie: vynútenie priamo v UI
   const realEl = document.getElementById("pf-datum_realizacie");
@@ -1101,6 +1202,9 @@ async function openPoruchaModal(id) {
   refreshVytazenostForModal();
 
   modal.classList.remove("hidden");
+  // Modal si medzi otvoreniami pamätá scroll pozíciu (je to ten istý DOM prvok) -
+  // vždy ho otvor odscrolovaný na vrch, nie tam, kde ostal pri predchádzajúcej poruche.
+  modal.scrollTop = 0;
 }
 
 function autoFillPrOdFromPlan() {
@@ -1369,6 +1473,23 @@ function refreshVytazenostForModal() {
   showVytazenost3Days(relevantVytazenostDate());
 }
 
+// Rozdelí zoznam porúch technika na daný deň do 3 farebných skupín podľa stavu
+// a vykreslí ich vedľa seba ako farebné čísla s bublinou (ID + adresa každej).
+function renderVytazenostCell(zoznam) {
+  if (!zoznam || !zoznam.length) return `<span class="vt-num vt-none">0</span>`;
+  const skupiny = { zelena: [], zlta: [], cierna: [] };
+  zoznam.forEach(p => {
+    if (p.stav === "Zrealizovaná" || p.stav === "Provizórna") skupiny.zelena.push(p);
+    else if (p.stav === "Stornovaná") skupiny.zlta.push(p);
+    else skupiny.cierna.push(p);
+  });
+  return ["zelena", "zlta", "cierna"].map(g => {
+    if (!skupiny[g].length) return "";
+    const title = skupiny[g].map(p => `${p.externe_id || ("#" + p.id)} — ${p.adresa || "(bez adresy)"}`).join("\n");
+    return `<span class="vt-num vt-${g}" title="${escapeHtml(title)}">${skupiny[g].length}</span>`;
+  }).filter(Boolean).join(" ");
+}
+
 async function showVytazenost3Days(baseDateStr) {
   const hint = document.getElementById("vytazenost-hint");
   const dates = [0, 1, 2].map(i => addDaysStr(baseDateStr, i));
@@ -1376,14 +1497,13 @@ async function showVytazenost3Days(baseDateStr) {
     const results = await Promise.all(dates.map(d => api("/technici/vytazenost?datum=" + d)));
     if (!results[0].length) { hint.innerHTML = "Zatiaľ nie sú zadaní žiadni technici."; return; }
     const technici = results[0].map(t => t.meno);
-    let html = `<b>Vyťaženosť technikov od ${fmtDate(dates[0])}:</b>`;
+    let html = `<b>Vyťaženosť technikov od ${fmtDate(dates[0])}:</b> <span style="font-weight:400;color:var(--muted);">(zelená = zrealizovaná/provizórna, žltá = stornovaná, čierna = otvorená/zaparkovaná; prejdi myšou nad číslom pre ID a adresu)</span>`;
     html += `<table class="vytazenost-3day"><thead><tr><th></th>${dates.map(d => `<th>${fmtDate(d)}</th>`).join("")}</tr></thead><tbody>`;
     technici.forEach((meno, idx) => {
       html += `<tr><td class="vt-tech">${escapeHtml(meno)}</td>`;
       results.forEach(r => {
-        const pocet = r[idx] ? r[idx].pocet_poruch : 0;
-        const cls = pocet >= 2 ? "vt-2" : (pocet === 1 ? "vt-1" : "vt-0");
-        html += `<td class="${cls}">${pocet}</td>`;
+        const zoznam = r[idx] ? r[idx].poruchy : [];
+        html += `<td>${renderVytazenostCell(zoznam)}</td>`;
       });
       html += `</tr>`;
     });
@@ -1448,6 +1568,44 @@ document.getElementById("pf-externe_id").addEventListener("input", (e) => {
   clearTimeout(dupTimer);
   const val = e.target.value;
   dupTimer = setTimeout(() => checkDuplicateExterneId(val), 400);
+});
+
+// ---------------------------------------------------------------------
+// SPM/cena/faktúra blok - tiež statické polia, listenery raz
+// ---------------------------------------------------------------------
+function setDateVal(id, v) { const el = document.getElementById(id); if (el) el.value = v ? String(v).slice(0, 10) : ""; }
+function setCheckVal(id, v) { const el = document.getElementById(id); if (el) el.checked = !!v; }
+function setTextVal(id, v) { const el = document.getElementById(id); if (el) el.value = v ?? ""; }
+function setNumVal(id, v) { const el = document.getElementById(id); if (el) el.value = v ?? ""; }
+
+// 'SPM číslo - neúčtuje sa' nie je samostatné pole v databáze - je to len
+// vizuálny odraz stavu 'SPM zadaný - neúčtuje sa' (keď sa SPM neúčtuje, tak ani
+// SPM číslo nemá zmysel vypĺňať).
+function updateSpmCisloIndicator() {
+  const neuctuje = document.getElementById("pf-spm_zadany_neuctuje_sa").checked;
+  document.getElementById("pf-spm_cislo_neuctuje_sa").checked = neuctuje;
+  document.getElementById("pf-spm_cislo").disabled = neuctuje;
+}
+
+document.getElementById("pf-spm_zadany_neuctuje_sa").addEventListener("change", (e) => {
+  if (e.target.checked) {
+    document.getElementById("pf-spm_schvaleny_neuctuje_sa").checked = true;
+    document.getElementById("pf-cena_prace_neuctuje_sa").checked = true;
+    document.getElementById("pf-cena_materialu_neuctuje_sa").checked = true;
+  }
+  updateSpmCisloIndicator();
+});
+
+// ---------------------------------------------------------------------
+// Číslo zákazky - vizuálne zvýraznenie kým je prázdne (aby sa nezabudlo vyplniť)
+// ---------------------------------------------------------------------
+function updateCisloZakazkyHighlight() {
+  const el = document.getElementById("pf-cislo_zakazky");
+  if (!el) return;
+  el.classList.toggle("cislo-zakazky-prazdne", !el.value.trim());
+}
+document.addEventListener("input", (e) => {
+  if (e.target && e.target.id === "pf-cislo_zakazky") updateCisloZakazkyHighlight();
 });
 
 document.getElementById("btn-nova-porucha").addEventListener("click", () => openPoruchaModal(null));
@@ -1662,6 +1820,110 @@ document.getElementById("nt-add").addEventListener("click", async () => {
   document.getElementById("nt-meno").value = "";
   loadTechniciView();
   loadCiselnikyATechnici();
+});
+
+// ---------------------------------------------------------------------
+// Poznámky (voľné poznámky nenaviazané na poruchu)
+// ---------------------------------------------------------------------
+function fmtPoznamkaTermin(p) {
+  if (p.termin_od && p.termin_do) return `Termín: ${fmtDate(p.termin_od)} – ${fmtDate(p.termin_do)}`;
+  if (p.termin_od) return `Termín od: ${fmtDate(p.termin_od)}`;
+  if (p.termin_do) return `Termín do: ${fmtDate(p.termin_do)}`;
+  return "";
+}
+
+async function loadPoznamkyView() {
+  const rows = await api("/poznamky");
+  const el = document.getElementById("poznamky-list");
+  el.innerHTML = "";
+  if (!rows.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px;'>Zatiaľ žiadne poznámky.</p>";
+    return;
+  }
+  rows.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "poznamka-item";
+    item.dataset.id = p.id;
+    const termin = fmtPoznamkaTermin(p);
+    item.innerHTML = `
+      <div>
+        <div class="pz-text">${escapeHtml(p.text)}</div>
+        ${termin ? `<div class="pz-termin">${escapeHtml(termin)}</div>` : ""}
+      </div>
+      <div class="pz-actions">
+        <button class="btn-secondary" data-pz-edit="${p.id}" type="button">Upraviť</button>
+        <button class="btn-danger" data-pz-del="${p.id}" type="button">Zmazať</button>
+      </div>
+    `;
+    el.appendChild(item);
+
+    const editBox = document.createElement("div");
+    editBox.className = "poznamka-edit-box hidden";
+    editBox.id = "pz-edit-box-" + p.id;
+    editBox.innerHTML = `
+      <textarea rows="2" id="pz-edit-text-${p.id}">${escapeHtml(p.text)}</textarea>
+      <div class="pz-edit-dates">
+        <label class="filter-datum-label">Termín od<input type="date" id="pz-edit-od-${p.id}" value="${p.termin_od || ""}"></label>
+        <label class="filter-datum-label">Termín do<input type="date" id="pz-edit-do-${p.id}" value="${p.termin_do || ""}"></label>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" data-pz-save="${p.id}" type="button">Uložiť</button>
+        <button class="btn-secondary" data-pz-cancel="${p.id}" type="button">Zrušiť</button>
+      </div>
+    `;
+    el.appendChild(editBox);
+  });
+
+  el.querySelectorAll("[data-pz-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("pz-edit-box-" + btn.dataset.pzEdit).classList.toggle("hidden");
+    });
+  });
+  el.querySelectorAll("[data-pz-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("pz-edit-box-" + btn.dataset.pzCancel).classList.add("hidden");
+    });
+  });
+  el.querySelectorAll("[data-pz-save]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.pzSave;
+      const text = document.getElementById("pz-edit-text-" + id).value.trim();
+      if (!text) { alert("Text poznámky nesmie byť prázdny."); return; }
+      const termin_od = document.getElementById("pz-edit-od-" + id).value || null;
+      const termin_do = document.getElementById("pz-edit-do-" + id).value || null;
+      if (termin_od && termin_do && termin_do < termin_od) { alert("Termín 'do' nemôže byť skorší ako 'od'."); return; }
+      try {
+        await api("/poznamky/" + id, { method: "PUT", body: JSON.stringify({ text, termin_od, termin_do }) });
+        loadPoznamkyView();
+      } catch (e) { alert("Chyba: " + e.message); }
+    });
+  });
+  el.querySelectorAll("[data-pz-del]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Naozaj zmazať túto poznámku?")) return;
+      try {
+        await api("/poznamky/" + btn.dataset.pzDel, { method: "DELETE" });
+        loadPoznamkyView();
+        loadDashboard();
+      } catch (e) { alert("Chyba: " + e.message); }
+    });
+  });
+}
+
+document.getElementById("pz-add").addEventListener("click", async () => {
+  const text = document.getElementById("pz-text").value.trim();
+  if (!text) { alert("Napíš text poznámky."); return; }
+  const termin_od = document.getElementById("pz-termin-od").value || null;
+  const termin_do = document.getElementById("pz-termin-do").value || null;
+  if (termin_od && termin_do && termin_do < termin_od) { alert("Termín 'do' nemôže byť skorší ako 'od'."); return; }
+  try {
+    await api("/poznamky", { method: "POST", body: JSON.stringify({ text, termin_od, termin_do }) });
+    document.getElementById("pz-text").value = "";
+    document.getElementById("pz-termin-od").value = "";
+    document.getElementById("pz-termin-do").value = "";
+    loadPoznamkyView();
+    loadDashboard();
+  } catch (e) { alert("Chyba: " + e.message); }
 });
 
 // ---------------------------------------------------------------------
