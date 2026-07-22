@@ -1842,13 +1842,31 @@ async function loadTechniciView() {
   all.forEach(t => {
     const row = document.createElement("div");
     row.className = "card-item" + (t.aktivny ? "" : " inactive");
-    row.innerHTML = `<span>${escapeHtml(t.meno)} ${t.aktivny ? "" : "(neaktívny)"}</span>
+    row.innerHTML = `<span id="tech-name-${t.id}">${escapeHtml(t.meno)} ${t.aktivny ? "" : "(neaktívny)"}</span>
       <span style="display:flex;gap:6px;">
+        <button class="btn-secondary" data-rename-tech="${t.id}">Premenovať</button>
         ${t.aktivny
           ? `<button class="btn-secondary" data-deact-tech="${t.id}">Deaktivovať</button>`
           : `<button class="btn-secondary" data-act-tech="${t.id}">Aktivovať</button>`}
         <button class="btn-danger" data-delete-tech="${t.id}">Vymazať</button>
       </span>`;
+    // Meno drží uzáver (closure) nad `t.meno`, nie HTML atribút - meno technika sa
+    // tak nemusí "escapovať" do atribútu (a nerozbije sa, ani keby obsahovalo úvodzovky).
+    row.querySelector("[data-rename-tech]").addEventListener("click", async () => {
+      // Premenovanie technika je bezpečné aj keď má už priradené ostré poruchy -
+      // priradenia sú naviazané na jeho ID, nie na text mena, takže sa nič nepokazí.
+      const nove = prompt("Nové meno technika (napr. 'Priezvisko Meno'):", t.meno);
+      if (nove === null) return; // zrušené
+      const trimmed = nove.trim();
+      if (!trimmed || trimmed === t.meno) return;
+      try {
+        await api("/technici/" + t.id, { method: "PUT", body: JSON.stringify({ meno: trimmed }) });
+        loadTechniciView();
+        loadCiselnikyATechnici();
+      } catch (e) {
+        alert("Chyba pri premenovaní: " + e.message);
+      }
+    });
     el.appendChild(row);
   });
   el.querySelectorAll("[data-deact-tech]").forEach(btn => {
