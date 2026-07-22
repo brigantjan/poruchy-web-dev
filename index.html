@@ -113,6 +113,10 @@
   .form-grid label.full{grid-column:1/-1;}
   .checkbox-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);flex-direction:row!important;}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .modal-header-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+  .modal-header-row h2{margin:0;}
+  .modal-header-actions{display:flex;gap:8px;flex-shrink:0;}
+  .modal-header-actions button{padding:5px 12px;font-size:13px;}
   .section-title{font-weight:600;margin:12px 0 6px;border-top:1px solid #c4cddb;padding-top:10px;}
   .top-id-row{display:grid;grid-template-columns:160px 1fr;gap:12px;margin-bottom:2px;}
   .top-id-row label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;}
@@ -402,7 +406,13 @@
 <!-- ===== Modal: porucha detail/edit ===== -->
 <div class="modal-overlay hidden" id="modal-porucha">
   <div class="modal-box">
-    <h2 id="modal-title">Porucha</h2>
+    <div class="modal-header-row">
+      <h2 id="modal-title">Porucha</h2>
+      <div class="modal-header-actions">
+        <button class="btn-secondary" id="modal-cancel-top" type="button">Zavrieť</button>
+        <button class="btn-primary" id="modal-save-top" type="button">Uložiť</button>
+      </div>
+    </div>
 
     <div class="paste-box" id="paste-box">
       <label style="font-size:12px;color:var(--muted);">Rýchle vloženie zo ST MWF (ID / adresa / meno / zadané / LT / popis — každé na samostatnom riadku, posledný riadok popis je nepovinný)</label>
@@ -1007,7 +1017,10 @@ function renderPoruchyTable(rows) {
     const tr = document.createElement("tr");
     tr.className = rowStavClass(r);
     tr.dataset.id = r.id;
-    tr.addEventListener("click", () => openPoruchaModal(r.id));
+    // Dvojklik (nie jeden klik) - Ján si z riadku často kopíruje ID poruchy myšou
+    // (výber textu je tiež "klik + ťahanie"), jeden klik by mu pri tom vždy otvoril
+    // editáciu poruchy.
+    tr.addEventListener("dblclick", () => openPoruchaModal(r.id));
     tr.innerHTML = poruchaRowInnerHtml(r);
     tbody.appendChild(tr);
   });
@@ -1593,6 +1606,17 @@ document.getElementById("paste-fill-btn").addEventListener("click", () => {
 
 document.getElementById("modal-cancel").addEventListener("click", () => {
   document.getElementById("modal-porucha").classList.add("hidden");
+});
+
+// Horné tlačidlá "Zavrieť"/"Uložiť" (vedľa nadpisu) sú len kozmetická skratka -
+// nech dispečer pri úprave hornej časti formulára nemusí scrolovať dole. Robia
+// presne to isté ako spodné tlačidlá (len ich "kliknú" za neho), takže logika
+// ukladania/zatvárania zostáva na jednom mieste.
+document.getElementById("modal-cancel-top").addEventListener("click", () => {
+  document.getElementById("modal-cancel").click();
+});
+document.getElementById("modal-save-top").addEventListener("click", () => {
+  document.getElementById("modal-save").click();
 });
 
 // Stav a Externé ID sú statické polia (nie sú súčasťou dynamicky generovaného
