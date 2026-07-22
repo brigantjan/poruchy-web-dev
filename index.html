@@ -514,6 +514,18 @@
   </div>
 </div>
 
+<!-- ===== Modal: upozornenie na podobnú adresu ===== -->
+<div class="modal-overlay hidden" id="modal-podobna-adresa">
+  <div class="modal-box" style="width:480px;">
+    <h2>Podobná adresa</h2>
+    <div id="pa-zoznam"></div>
+    <div id="pa-detail" class="hidden"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="pa-close">Zavrieť</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
 "use strict";
@@ -1240,9 +1252,104 @@ function applyDraftValues(values) {
 document.getElementById("modal-porucha").addEventListener("input", scheduleDraftSave);
 document.getElementById("modal-porucha").addEventListener("change", scheduleDraftSave);
 
+// ---------------------------------------------------------------------
+// Upozornenie na podobnú adresu - keď dispečerka dopíše/vloží adresu, appka
+// potichu skontroluje, či sme na tej lokalite už niečo riešili (fuzzy zhoda
+// cez /poruchy/podobne), a ak áno, ponúkne rýchly náhľad tej starej poruchy.
+// ---------------------------------------------------------------------
+let lastCheckedAdresa = null;
+
+async function checkPodobnaAdresa() {
+  const adresaEl = document.getElementById("pf-adresa");
+  if (!adresaEl) return;
+  const adresa = adresaEl.value.trim();
+  if (adresa.length < 4 || adresa === lastCheckedAdresa) return;
+  lastCheckedAdresa = adresa;
+  let matches;
+  try {
+    const params = new URLSearchParams({ adresa });
+    if (state.currentPoruchaId) params.set("vynechat_id", state.currentPoruchaId);
+    matches = await api("/poruchy/podobne?" + params.toString());
+  } catch (e) {
+    return; // nekritická funkcia - pri chybe (napr. výpadok siete) len ticho preskoč
+  }
+  if (matches && matches.length) showPodobnaAdresaPopup(matches);
+}
+
+function fmtPodobnyDatum(m) {
+  return fmtDateTime(m.datum_realizacie || m.planovany_datum || m.datum_zadania);
+}
+
+function showPodobnaAdresaPopup(matches) {
+  const zoznamEl = document.getElementById("pa-zoznam");
+  const detailEl = document.getElementById("pa-detail");
+  detailEl.classList.add("hidden");
+  detailEl.innerHTML = "";
+  zoznamEl.classList.remove("hidden");
+  zoznamEl.innerHTML = `
+    <p style="margin-bottom:10px;font-size:13px;">Na tejto (alebo veľmi podobnej) adrese sme už niečo riešili:</p>
+    <div class="card-list">
+      ${matches.map(m => `
+        <div class="card-item">
+          <span>
+            <b>${escapeHtml(m.externe_id || ("#" + m.id))}</b> — ${fmtPodobnyDatum(m)} (${escapeHtml(m.stav)})<br>
+            <span style="color:var(--muted);font-size:12px;">${escapeHtml(m.adresa)}</span>
+          </span>
+          <button class="btn-secondary" data-pa-show="${m.id}" type="button">Zobraziť</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  zoznamEl.querySelectorAll("[data-pa-show]").forEach(btn => {
+    btn.addEventListener("click", () => showPodobnaAdresaDetail(btn.dataset.paShow));
+  });
+  document.getElementById("modal-podobna-adresa").classList.remove("hidden");
+}
+
+async function showPodobnaAdresaDetail(id) {
+  const zoznamEl = document.getElementById("pa-zoznam");
+  const detailEl = document.getElementById("pa-detail");
+  let d;
+  try {
+    d = await api("/poruchy/" + id);
+  } catch (e) {
+    alert("Nepodarilo sa načítať poruchu: " + e.message);
+    return;
+  }
+  zoznamEl.classList.add("hidden");
+  detailEl.classList.remove("hidden");
+  detailEl.innerHTML = `
+    <div style="font-size:13px;line-height:1.8;">
+      <div><b>${escapeHtml(d.externe_id || ("#" + d.id))}</b> — ${escapeHtml(d.stav)}</div>
+      <div><b>Adresa:</b> ${escapeHtml(d.adresa || "")}</div>
+      <div><b>Meno/Subjekt:</b> ${escapeHtml(d.meno_subjekt || "")}</div>
+      <div><b>Zadané:</b> ${fmtDateTime(d.datum_zadania)}</div>
+      <div><b>Realizácia:</b> ${fmtDateTime(d.datum_realizacie)}</div>
+      <div><b>Popis:</b> ${escapeHtml(d.popis || "")}</div>
+      <div><b>Poznámka:</b> ${escapeHtml(d.poznamka || "")}</div>
+    </div>
+    <button class="btn-secondary" id="pa-back" type="button" style="margin-top:10px;">« Späť na zoznam</button>
+  `;
+  document.getElementById("pa-back").addEventListener("click", () => {
+    detailEl.classList.add("hidden");
+    zoznamEl.classList.remove("hidden");
+  });
+}
+
+document.getElementById("pa-close").addEventListener("click", () => {
+  document.getElementById("modal-podobna-adresa").classList.add("hidden");
+});
+
+// Delegovaný listener na "focusout" (blur nebubluje) - #porucha-form je stály
+// DOM prvok, aj keď sa jeho obsah pri každom otvorení modalu znova vygeneruje.
+document.getElementById("porucha-form").addEventListener("focusout", (e) => {
+  if (e.target && e.target.id === "pf-adresa") checkPodobnaAdresa();
+});
+
 async function openPoruchaModal(id) {
   state.currentPoruchaId = id;
   state.pendingPriradenia = [];
+  lastCheckedAdresa = null; // nová porucha v modale = nezávislá kontrola adresy
   const modal = document.getElementById("modal-porucha");
   const form = document.getElementById("porucha-form");
   document.getElementById("modal-title").textContent = id ? "Upraviť poruchu" : "Nová porucha";
@@ -1684,9 +1791,10 @@ document.getElementById("paste-fill-btn").addEventListener("click", () => {
   if (ltEl && ltVal) ltEl.value = ltVal;
   if (popisEl && popisLine) popisEl.value = popisLine;
 
-  // hodnota bola nastavená programovo, nie napísaním - "input" event sa nespustí sám,
-  // preto kontrolu duplicity spúšťame explicitne
+  // hodnota bola nastavená programovo, nie napísaním - "input"/"focusout" sa nespustia
+  // samy, preto kontrolu duplicity aj podobnej adresy spúšťame explicitne
   if (externeIdEl) checkDuplicateExterneId(idLine);
+  if (adresaEl && adresaLine) checkPodobnaAdresa();
 
   statusEl.style.color = "var(--zelena)";
   statusEl.textContent = popisLine
