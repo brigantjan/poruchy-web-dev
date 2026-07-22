@@ -1260,6 +1260,10 @@ document.getElementById("modal-porucha").addEventListener("change", scheduleDraf
 let lastCheckedAdresa = null;
 
 async function checkPodobnaAdresa() {
+  // Iba pri zápise NOVEJ poruchy - keď si dispečerka len otvorí starú poruchu
+  // (napr. skopírovať z nej adresu) a zavrie ju, nemá zmysel ju hneď bombardovať
+  // upozornením na tú istú poruchu, z ktorej práve odišla.
+  if (state.currentPoruchaId) return;
   const adresaEl = document.getElementById("pf-adresa");
   if (!adresaEl) return;
   const adresa = adresaEl.value.trim();
@@ -1268,7 +1272,6 @@ async function checkPodobnaAdresa() {
   let matches;
   try {
     const params = new URLSearchParams({ adresa });
-    if (state.currentPoruchaId) params.set("vynechat_id", state.currentPoruchaId);
     matches = await api("/poruchy/podobne?" + params.toString());
   } catch (e) {
     return; // nekritická funkcia - pri chybe (napr. výpadok siete) len ticho preskoč
