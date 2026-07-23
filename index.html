@@ -59,6 +59,7 @@
   #sidebar .stats div.stat-clickable{cursor:pointer;}
   #sidebar .stats div.stat-clickable:hover{background:rgba(255,255,255,.15);}
   #quick-filter-banner{background:var(--oranzova-bg);color:var(--oranzova);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;}
+  #btn-sort-lt.active{background:var(--accent);color:#fff;border-color:var(--accent);}
   #sidebar nav{flex:1;padding:8px 0;}
   #sidebar nav button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--sidebar-fg);padding:9px 10px;font-size:12.5px;}
   #sidebar nav button:hover,#sidebar nav button.active{background:#1c4a7f;}
@@ -237,7 +238,10 @@
       </div>
       <div id="quick-filter-banner" class="hidden">
         <span id="quick-filter-text"></span>
-        <button class="btn-secondary" id="quick-filter-clear">Zobraziť všetky poruchy</button>
+        <span style="display:flex;gap:8px;">
+          <button class="btn-secondary hidden" id="btn-sort-lt" type="button">Zoradiť podľa LT</button>
+          <button class="btn-secondary" id="quick-filter-clear">Zobraziť všetky poruchy</button>
+        </span>
       </div>
       <div class="table-wrap">
         <table id="poruchy-table">
@@ -558,6 +562,9 @@ const state = {
   quickFilter: null,
   dashboardCounts: {},
   lastSavedId: null,
+  // Dočasné triedenie "podľa LT" - platí len kým je aktívny rýchly filter Otvorené,
+  // pri odchode z neho (akýkoľvek iný filter/reset) sa vždy vypne.
+  sortByLt: false,
 };
 
 const QUICK_FILTER_LABELS = {
@@ -770,6 +777,9 @@ document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
 
 function applyQuickFilter(key) {
   state.quickFilter = key;
+  // Triedenie podľa LT je vždy len dočasné - pri (opätovnom) vstupe do ktoréhokoľvek
+  // rýchleho filtra (aj Otvorené znova) sa vždy začína od predvoleného triedenia.
+  state.sortByLt = false;
   ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"].forEach(id => document.getElementById(id).value = "");
   ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do",
     "f-spm-zadany-od", "f-spm-zadany-do", "f-spm-schvaleny-od", "f-spm-schvaleny-do"].forEach(id => document.getElementById(id).value = "");
@@ -785,7 +795,12 @@ function applyQuickFilter(key) {
 }
 
 document.getElementById("quick-filter-clear").addEventListener("click", () => {
-  state.quickFilter = null;
+  state.quickFilter = null; state.sortByLt = false;
+  loadPoruchy();
+});
+
+document.getElementById("btn-sort-lt").addEventListener("click", () => {
+  state.sortByLt = !state.sortByLt;
   loadPoruchy();
 });
 
@@ -834,29 +849,29 @@ const F_TEXT_IDS = ["f-spm-cislo", "f-zakazka"];
 const F_SELECT_IDS = ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"];
 
 [...F_SELECT_IDS, ...F_DATUM_IDS].forEach(id => {
-  document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; loadPoruchy(); });
+  document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; state.sortByLt = false; loadPoruchy(); });
 });
 document.getElementById("f-zakazka-prazdna").addEventListener("change", () => {
   document.getElementById("f-zakazka").disabled = document.getElementById("f-zakazka-prazdna").checked;
-  state.quickFilter = null;
+  state.quickFilter = null; state.sortByLt = false;
   loadPoruchy();
 });
 let hladatTimer = null;
 document.getElementById("f-hladat").addEventListener("input", () => {
-  state.quickFilter = null;
+  state.quickFilter = null; state.sortByLt = false;
   clearTimeout(hladatTimer);
   hladatTimer = setTimeout(loadPoruchy, 350);
 });
 let textFilterTimer = null;
 F_TEXT_IDS.forEach(id => {
   document.getElementById(id).addEventListener("input", () => {
-    state.quickFilter = null;
+    state.quickFilter = null; state.sortByLt = false;
     clearTimeout(textFilterTimer);
     textFilterTimer = setTimeout(loadPoruchy, 350);
   });
 });
 document.getElementById("f-reset").addEventListener("click", () => {
-  state.quickFilter = null;
+  state.quickFilter = null; state.sortByLt = false;
   F_SELECT_IDS.forEach(id => document.getElementById(id).value = "");
   F_DATUM_IDS.forEach(id => document.getElementById(id).value = "");
   F_TEXT_IDS.forEach(id => document.getElementById(id).value = "");
@@ -930,6 +945,7 @@ function buildPoruchyParams() {
   const params = new URLSearchParams();
   if (state.quickFilter) {
     params.set("rychly", state.quickFilter);
+    if (state.quickFilter === "otvorene" && state.sortByLt) params.set("sort", "lt_asc");
     return params;
   }
   const stav = document.getElementById("f-stav").value;
@@ -980,12 +996,17 @@ function buildPoruchyParams() {
 
 async function loadPoruchy() {
   const banner = document.getElementById("quick-filter-banner");
+  const sortLtBtn = document.getElementById("btn-sort-lt");
   if (state.quickFilter) {
     document.getElementById("quick-filter-text").textContent =
       "Rýchly filter: " + (QUICK_FILTER_LABELS[state.quickFilter] || state.quickFilter);
     banner.classList.remove("hidden");
+    // Tlačidlo "Zoradiť podľa LT" dáva zmysel len v pohľade Otvorené.
+    sortLtBtn.classList.toggle("hidden", state.quickFilter !== "otvorene");
+    sortLtBtn.classList.toggle("active", state.quickFilter === "otvorene" && state.sortByLt);
   } else {
     banner.classList.add("hidden");
+    sortLtBtn.classList.add("hidden");
   }
 
   const params = buildPoruchyParams();
