@@ -2371,6 +2371,17 @@ async function initApp() {
   await loadCiselnikyATechnici();
   await loadDashboard();
   await loadPoruchy();
+
+  // Stĺpec "LT (hh:mm)" pri otvorených/zaparkovaných poruchách počíta zostávajúci
+  // čas voči AKTUÁLNEMU dátumu a času (nie voči plánu) - bez automatického
+  // obnovenia by teda "zamrzol" na hodnote z okamihu posledného načítania zoznamu.
+  // Každých 5 minút potichu prenačítame zoznam (len ak je pohľad Zoznam porúch
+  // práve otvorený), nech čísla priebežne "bežia", ale nie zbytočne často/rušivo.
+  setInterval(() => {
+    if (document.getElementById("view-poruchy").classList.contains("active")) {
+      loadPoruchy();
+    }
+  }, 5 * 60 * 1000);
 }
 
 (async function boot() {
