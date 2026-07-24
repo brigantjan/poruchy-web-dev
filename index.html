@@ -228,7 +228,7 @@
     <!-- ===== Zoznam porúch ===== -->
     <section id="view-poruchy" class="view active">
       <div class="view-header">
-        <h1>Zoznam porúch</h1>
+        <h1>Zoznam porúch <span id="poruchy-header-user" style="font-weight:400;color:var(--muted);"></span></h1>
         <div style="display:flex;gap:8px;align-items:center;">
           <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:240px;">
           <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
@@ -670,6 +670,10 @@ function ltHoursCell(r) {
 // ---------------------------------------------------------------------
 // Login
 // ---------------------------------------------------------------------
+const USER_DISPLAY_NAMES = {
+  "brigant@suptel.sk": "Ján Brigant",
+  "kuzmova@suptel.sk": "Michaela Kuzmová",
+};
 function showLogin() {
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("app").classList.add("hidden");
@@ -679,6 +683,11 @@ function showApp() {
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("current-email").textContent = state.email;
   document.getElementById("current-role").textContent = state.role;
+  const headerUserEl = document.getElementById("poruchy-header-user");
+  if (headerUserEl) {
+    const displayName = USER_DISPLAY_NAMES[state.email] || state.email || "";
+    headerUserEl.textContent = displayName ? "– " + displayName : "";
+  }
   applyRoleVisibility();
 }
 
@@ -2375,13 +2384,13 @@ async function initApp() {
   // Stĺpec "LT (hh:mm)" pri otvorených/zaparkovaných poruchách počíta zostávajúci
   // čas voči AKTUÁLNEMU dátumu a času (nie voči plánu) - bez automatického
   // obnovenia by teda "zamrzol" na hodnote z okamihu posledného načítania zoznamu.
-  // Každých 5 minút potichu prenačítame zoznam (len ak je pohľad Zoznam porúch
+  // Každých 30 minút potichu prenačítame zoznam (len ak je pohľad Zoznam porúch
   // práve otvorený), nech čísla priebežne "bežia", ale nie zbytočne často/rušivo.
   setInterval(() => {
     if (document.getElementById("view-poruchy").classList.contains("active")) {
       loadPoruchy();
     }
-  }, 5 * 60 * 1000);
+  }, 30 * 60 * 1000);
 }
 
 (async function boot() {
