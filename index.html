@@ -468,6 +468,11 @@
 
     <div class="form-grid" id="porucha-form"></div>
 
+    <div class="balicky-search-row" style="margin:2px 0 12px;">
+      <button class="btn-secondary" id="btn-hladaj-balicek" type="button">Kto inštaloval balíček?</button>
+      <span id="balicky-search-status" style="font-size:12px;color:var(--muted);margin-left:8px;"></span>
+    </div>
+
     <div class="section-title">SPM / ceny / faktúra</div>
     <div class="spm-blok" id="spm-blok">
       <div class="spm-blok-row">
@@ -537,6 +542,17 @@
     <div id="pa-detail" class="hidden"></div>
     <div class="modal-actions">
       <button class="btn-secondary" id="pa-close">Zavrieť</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: kto inštaloval balíček ===== -->
+<div class="modal-overlay hidden" id="modal-balicky-vysledok">
+  <div class="modal-box" style="width:560px;">
+    <h2>Kto inštaloval balíček</h2>
+    <div id="bv-zoznam"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="bv-close">Zavrieť</button>
     </div>
   </div>
 </div>
@@ -1389,6 +1405,74 @@ document.getElementById("pa-close").addEventListener("click", () => {
 // DOM prvok, aj keď sa jeho obsah pri každom otvorení modalu znova vygeneruje.
 document.getElementById("porucha-form").addEventListener("focusout", (e) => {
   if (e.target && e.target.id === "pf-adresa") checkPodobnaAdresa();
+});
+
+// ---------------------------------------------------------------------
+// "Kto inštaloval balíček?" - pomôcka pri riešení reklamácií (porucha spôsobená
+// chybnou inštaláciou balíčka). Na požiadanie (tlačidlo, NIE automaticky)
+// prehľadá archív starých zriadení aj živé dáta z Dispečingu balíčkov podľa
+// adresy z formulára. Adresa je rozhodujúca zhoda, meno/priezvisko je len
+// doplňujúci potvrdzujúci údaj pri výsledku - vlastný výber technika ostáva na
+// dispečerke v existujúcom bloku "Priradenia technikov" nižšie v tomto formulári.
+// ---------------------------------------------------------------------
+function fmtBalicekDatum(v) {
+  return v ? fmtDate(v) : "–";
+}
+
+document.getElementById("btn-hladaj-balicek").addEventListener("click", async () => {
+  const adresaEl = document.getElementById("pf-adresa");
+  const menoEl = document.getElementById("pf-meno_subjekt");
+  const adresa = (adresaEl?.value || "").trim();
+  const meno = (menoEl?.value || "").trim();
+  const statusEl = document.getElementById("balicky-search-status");
+
+  if (adresa.length < 4) {
+    alert("Najprv vyplň adresu (aspoň 4 znaky) - podľa nej sa vyhľadáva.");
+    return;
+  }
+
+  statusEl.textContent = "Hľadám…";
+  let vysledky;
+  try {
+    const params = new URLSearchParams({ adresa });
+    if (meno) params.set("meno", meno);
+    vysledky = await api("/balicky/vyhladaj?" + params.toString());
+  } catch (e) {
+    statusEl.textContent = "";
+    alert("Vyhľadávanie zlyhalo: " + e.message);
+    return;
+  }
+  statusEl.textContent = "";
+  showBalickyVysledok(vysledky);
+});
+
+function showBalickyVysledok(vysledky) {
+  const zoznamEl = document.getElementById("bv-zoznam");
+  if (!vysledky || !vysledky.length) {
+    zoznamEl.innerHTML = `<p style="font-size:13px;color:var(--muted);">Na tejto adrese sa nenašla žiadna evidovaná inštalácia balíčka (ani v archíve, ani v aktuálnom Dispečingu balíčkov).</p>`;
+  } else {
+    zoznamEl.innerHTML = `
+      <div class="card-list">
+        ${vysledky.map(v => `
+          <div class="card-item" style="align-items:flex-start;">
+            <span style="font-size:13px;line-height:1.7;">
+              <b>${escapeHtml(v.id_balicka || "–")}</b>
+              ${v.typ ? " · " + escapeHtml(v.typ) : ""}${v.balik ? " / " + escapeHtml(v.balik) : ""}<br>
+              <span>${escapeHtml(v.adresa || "")}</span><br>
+              <span style="color:var(--muted);">${escapeHtml(v.meno || "–")}</span><br>
+              Zadané: ${fmtBalicekDatum(v.datum_zadania)} · Realizované: ${fmtBalicekDatum(v.datum_realizacie)}<br>
+              <b>Technik(i):</b> ${v.technici && v.technici.length ? escapeHtml(v.technici.join(", ")) : "–"}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+  document.getElementById("modal-balicky-vysledok").classList.remove("hidden");
+}
+
+document.getElementById("bv-close").addEventListener("click", () => {
+  document.getElementById("modal-balicky-vysledok").classList.add("hidden");
 });
 
 async function openPoruchaModal(id) {
