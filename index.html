@@ -1446,28 +1446,48 @@ document.getElementById("btn-hladaj-balicek").addEventListener("click", async ()
   showBalickyVysledok(vysledky);
 });
 
+function balickyKarta(v, presnaZhoda) {
+  const zvyrazn = presnaZhoda
+    ? "border-left:4px solid #16a34a;background:#f0fdf4;"
+    : "border-left:4px solid var(--border);";
+  return `
+    <div class="card-item" style="align-items:flex-start;${zvyrazn}">
+      <span style="font-size:13px;line-height:1.7;">
+        <b>${escapeHtml(v.id_balicka || "–")}</b>
+        ${v.typ ? " · " + escapeHtml(v.typ) : ""}${v.balik ? " / " + escapeHtml(v.balik) : ""}<br>
+        <span>${escapeHtml(v.adresa || "")}</span><br>
+        <span style="color:var(--muted);">${escapeHtml(v.meno || "–")}</span><br>
+        Zadané: ${fmtBalicekDatum(v.datum_zadania)} · Realizované: ${fmtBalicekDatum(v.datum_realizacie)}<br>
+        <b>Technik(i):</b> ${v.technici && v.technici.length ? escapeHtml(v.technici.join(", ")) : "–"}
+      </span>
+    </div>
+  `;
+}
+
 function showBalickyVysledok(vysledky) {
   const zoznamEl = document.getElementById("bv-zoznam");
   if (!vysledky || !vysledky.length) {
     zoznamEl.innerHTML = `<p style="font-size:13px;color:var(--muted);">Na tejto adrese sa nenašla žiadna evidovaná inštalácia balíčka (ani v archíve, ani v aktuálnom Dispečingu balíčkov).</p>`;
-  } else {
-    zoznamEl.innerHTML = `
-      <div class="card-list">
-        ${vysledky.map(v => `
-          <div class="card-item" style="align-items:flex-start;">
-            <span style="font-size:13px;line-height:1.7;">
-              <b>${escapeHtml(v.id_balicka || "–")}</b>
-              ${v.typ ? " · " + escapeHtml(v.typ) : ""}${v.balik ? " / " + escapeHtml(v.balik) : ""}<br>
-              <span>${escapeHtml(v.adresa || "")}</span><br>
-              <span style="color:var(--muted);">${escapeHtml(v.meno || "–")}</span><br>
-              Zadané: ${fmtBalicekDatum(v.datum_zadania)} · Realizované: ${fmtBalicekDatum(v.datum_realizacie)}<br>
-              <b>Technik(i):</b> ${v.technici && v.technici.length ? escapeHtml(v.technici.join(", ")) : "–"}
-            </span>
-          </div>
-        `).join("")}
-      </div>
-    `;
+    document.getElementById("modal-balicky-vysledok").classList.remove("hidden");
+    return;
   }
+
+  // Presná zhoda adresy (100%) sa ukáže oddelene a zvýraznene navrchu - dispečerka
+  // musí na prvý pohľad vidieť rozdiel medzi "toto je určite tá adresa" a "toto je
+  // len podobná adresa, over si to".
+  const presne = vysledky.filter(v => v.zhoda_adresa >= 0.999);
+  const podobne = vysledky.filter(v => v.zhoda_adresa < 0.999);
+
+  let html = "";
+  if (presne.length) {
+    html += `<p style="font-size:12px;font-weight:600;color:#16a34a;margin:0 0 6px;">Presná zhoda adresy</p>`;
+    html += `<div class="card-list">${presne.map(v => balickyKarta(v, true)).join("")}</div>`;
+  }
+  if (podobne.length) {
+    html += `<p style="font-size:12px;font-weight:600;color:var(--muted);margin:${presne.length ? "18px" : "0"} 0 6px;">Podobné adresy (nie presná zhoda)</p>`;
+    html += `<div class="card-list">${podobne.map(v => balickyKarta(v, false)).join("")}</div>`;
+  }
+  zoznamEl.innerHTML = html;
   document.getElementById("modal-balicky-vysledok").classList.remove("hidden");
 }
 
