@@ -182,6 +182,39 @@
   .poznamka-edit-box{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
   .poznamka-edit-box .pz-edit-dates{display:flex;gap:10px;}
   .hidden{display:none!important;}
+
+  /* --- Rola "citatel" (len na prezeranie) - skryť všetky prvky, ktoré niečo menia --- */
+  body.citatel-mode #btn-nova-porucha,
+  body.citatel-mode #nt-meno,
+  body.citatel-mode #nt-add,
+  body.citatel-mode #modal-save,
+  body.citatel-mode #modal-save-top,
+  body.citatel-mode #modal-delete,
+  body.citatel-mode #paste-box,
+  body.citatel-mode .priradenie-add-box,
+  body.citatel-mode .poznamka-add-box,
+  body.citatel-mode [data-rename-tech],
+  body.citatel-mode [data-deact-tech],
+  body.citatel-mode [data-act-tech],
+  body.citatel-mode [data-delete-tech],
+  body.citatel-mode [data-deact-cis],
+  body.citatel-mode [data-priradenie-del],
+  body.citatel-mode [data-pz-edit],
+  body.citatel-mode [data-pz-del],
+  body.citatel-mode .poznamka-edit-box {
+    display: none !important;
+  }
+  body.citatel-mode #porucha-form input,
+  body.citatel-mode #porucha-form select,
+  body.citatel-mode #porucha-form textarea,
+  body.citatel-mode #spm-blok input,
+  body.citatel-mode #spm-blok select,
+  body.citatel-mode #pf-stav,
+  body.citatel-mode #pf-externe_id {
+    pointer-events: none;
+    background: #f3f4f6;
+    opacity: .85;
+  }
 </style>
 </head>
 <body>
@@ -399,6 +432,7 @@
         <select id="nu-rola">
           <option value="dispecer">dispečer</option>
           <option value="admin">admin</option>
+          <option value="citatel">čitateľ (len prezeranie)</option>
         </select>
         <button class="btn-primary" id="nu-add">Vytvoriť</button>
       </div>
@@ -417,6 +451,7 @@
       <label>Rola<select id="pu-rola">
         <option value="dispecer">dispečer</option>
         <option value="admin">admin</option>
+        <option value="citatel">čitateľ (len prezeranie)</option>
       </select></label>
       <label class="checkbox-row"><input type="checkbox" id="pu-aktivny"> Aktívny účet</label>
       <label>Nové heslo (nechaj prázdne = bez zmeny)<input type="text" id="pu-heslo" placeholder="Nové heslo (aspoň 6 znakov)"></label>
@@ -626,6 +661,19 @@ function applyRoleVisibility() {
   document.querySelectorAll("[data-role]").forEach(el => {
     el.classList.toggle("hidden", state.role !== el.dataset.role);
   });
+  document.body.classList.toggle("citatel-mode", state.role === "citatel");
+}
+
+// Rola "citatel" - formulár poruchy sa dá otvoriť a prezerať, ale nič sa v ňom
+// nedá zmeniť ani uložiť. CSS (.citatel-mode) skrýva/zošedí ovládacie prvky,
+// tu navyše skutočne zablokujeme (disabled) polia, nech sa do nich nedá písať
+// ani cez klávesnicu (CSS pointer-events samo o sebe klávesnicu nezastaví).
+function applyCitatelFormLock() {
+  if (state.role !== "citatel") return;
+  document.querySelectorAll(
+    "#porucha-form input, #porucha-form select, #porucha-form textarea, " +
+    "#spm-blok input, #spm-blok select, #pf-stav, #pf-externe_id"
+  ).forEach(el => { el.disabled = true; });
 }
 
 // ---------------------------------------------------------------------
@@ -1585,6 +1633,8 @@ async function openPoruchaModal(id) {
       }
     }
   } catch (e) { /* poškodený/neplatný koncept - ignoruj */ }
+
+  applyCitatelFormLock();
 
   modal.classList.remove("hidden");
   // Modal si medzi otvoreniami pamätá scroll pozíciu (je to ten istý DOM prvok) -
