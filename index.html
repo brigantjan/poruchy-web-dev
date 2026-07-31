@@ -2199,7 +2199,7 @@ function initPrehladSelectors() {
   const cbBox = document.getElementById("p-mesiace-checkboxes");
   const now = new Date();
 
-  let rokOpts = "";
+  let rokOpts = `<option value="all">Všetky roky</option>`;
   for (let r = now.getFullYear(); r >= now.getFullYear() - 3; r--) {
     rokOpts += `<option value="${r}" ${r === now.getFullYear() ? "selected" : ""}>${r}</option>`;
   }
@@ -2232,7 +2232,9 @@ async function loadPrehlad() {
     renderVytazenostChart([]);
     return;
   }
-  const data = await api(`/prehlad/mesiac?rok=${rok}&mesiace=${mesiace.join(",")}`);
+  // "Všetky roky" = rok sa vôbec nepošle, backend potom počíta cez celú históriu
+  const rokParam = rok === "all" ? "" : `&rok=${rok}`;
+  const data = await api(`/prehlad/mesiac?mesiace=${mesiace.join(",")}${rokParam}`);
   document.getElementById("p-suhrn").textContent =
     `${data.suhrn.pocet_poruch || 0} porúch, ${fmtMoney(data.suhrn.trzba_spolu || 0)}`;
   if (!data.podla_zakazky.length) {
@@ -2243,7 +2245,7 @@ async function loadPrehlad() {
     `).join("");
   }
 
-  const vytazenost = await api(`/prehlad/vytazenost?rok=${rok}&mesiace=${mesiace.join(",")}`);
+  const vytazenost = await api(`/prehlad/vytazenost?mesiace=${mesiace.join(",")}${rokParam}`);
   renderVytazenostChart(vytazenost);
 }
 
