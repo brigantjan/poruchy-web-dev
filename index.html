@@ -1485,18 +1485,18 @@ document.getElementById("btn-hladaj-balicek").addEventListener("click", async ()
   }
 
   statusEl.textContent = "Hľadám…";
-  let vysledky;
+  let odpoved;
   try {
     const params = new URLSearchParams({ adresa });
     if (meno) params.set("meno", meno);
-    vysledky = await api("/balicky/vyhladaj?" + params.toString());
+    odpoved = await api("/balicky/vyhladaj?" + params.toString());
   } catch (e) {
     statusEl.textContent = "";
     alert("Vyhľadávanie zlyhalo: " + e.message);
     return;
   }
   statusEl.textContent = "";
-  showBalickyVysledok(vysledky);
+  showBalickyVysledok(odpoved.vysledky, odpoved.zdroj_zivy_chyba);
 });
 
 function balickyKarta(v, presnaZhoda) {
@@ -1517,10 +1517,22 @@ function balickyKarta(v, presnaZhoda) {
   `;
 }
 
-function showBalickyVysledok(vysledky) {
+function showBalickyVysledok(vysledky, zdrojZivyChyba) {
   const zoznamEl = document.getElementById("bv-zoznam");
+
+  // Ak sa nepodarilo načítať živé dáta z Dispečingu balíčkov, dispečérka to musí
+  // vidieť VŽDY na prvom mieste - inak by si "nenašlo sa nič" mohla mylne vyložiť
+  // ako "balíček sme neinštalovali", pritom v skutočnosti sa preverila len časť
+  // (archívne) dát. Od tohto vyhľadania závisí, či sa reklamácia uzná.
+  const chybaHtml = zdrojZivyChyba
+    ? `<div style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;">
+        ⚠️ ${escapeHtml(zdrojZivyChyba)}<br>
+        <span style="font-weight:600;">Výsledok nižšie preveruje len archívne dáta - aktuálny Dispečing balíčkov sa neprehľadal.</span>
+      </div>`
+    : "";
+
   if (!vysledky || !vysledky.length) {
-    zoznamEl.innerHTML = `<p style="font-size:13px;color:var(--muted);">Na tejto adrese sa nenašla žiadna evidovaná inštalácia balíčka (ani v archíve, ani v aktuálnom Dispečingu balíčkov).</p>`;
+    zoznamEl.innerHTML = chybaHtml + `<p style="font-size:13px;color:var(--muted);">Na tejto adrese sa nenašla žiadna evidovaná inštalácia balíčka${zdrojZivyChyba ? " v archíve" : " (ani v archíve, ani v aktuálnom Dispečingu balíčkov)"}.</p>`;
     document.getElementById("modal-balicky-vysledok").classList.remove("hidden");
     return;
   }
@@ -1531,7 +1543,7 @@ function showBalickyVysledok(vysledky) {
   const presne = vysledky.filter(v => v.zhoda_adresa >= 0.999);
   const podobne = vysledky.filter(v => v.zhoda_adresa < 0.999);
 
-  let html = "";
+  let html = chybaHtml;
   if (presne.length) {
     html += `<p style="font-size:12px;font-weight:600;color:#16a34a;margin:0 0 6px;">Presná zhoda adresy</p>`;
     html += `<div class="card-list">${presne.map(v => balickyKarta(v, true)).join("")}</div>`;
